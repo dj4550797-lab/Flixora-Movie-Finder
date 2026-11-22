@@ -9,6 +9,9 @@
 <link rel="preconnect" href="https://www.youtube.com">
 <link rel="preconnect" href="https://i.ytimg.com">
 <link rel="preconnect" href="https://www.google.com">
+<link rel="preconnect" href="https://dj4550797-lab.github.io">
+<link rel="preconnect" href="https://images.unsplash.com">
+<link rel="prefetch" href="https://dj4550797-lab.github.io/Flixora-Movie-Finder/animation.html" as="document">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
@@ -41,7 +44,7 @@ tailwind.config = {
 }
 
 /* ==========================================================================
-   2. BASE & RESPONSIVE STYLING (EXISTING APP PRESERVED)
+   2. BASE & RESPONSIVE STYLING
    ========================================================================== */
 html, body {
   max-width: 100%;
@@ -94,13 +97,20 @@ body::before {
 }
 .row-section { content-visibility: auto; contain-intrinsic-size: auto 285px; }
 
-body.swarm-building .site-header {
+body.swarm-building .site-header,
+body.watchme-active .site-header {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   background: rgba(7,9,15,.98) !important;
 }
-body.swarm-building .animate-pulse {
+body.swarm-building .animate-pulse,
+body.watchme-active .animate-pulse {
   animation: none !important;
+}
+body.watchme-active #homeView,
+body.watchme-active #dedicatedView,
+body.watchme-active #heroSection {
+  visibility: hidden;
 }
 
 .glow-ring {
@@ -669,33 +679,36 @@ body.swarm-building .animate-pulse {
     </nav>
   </div>
 
-  <!-- Smart Search Bar + Top Searches / Categories Dropdown -->
+  <!-- Search Bar + Solid Recent Searches Dropdown (Clear All + 1-by-1 Cut) -->
   <div id="headerSearchWrap" class="relative w-full lg:w-[420px]">
     <div class="liquid-pill rounded-full flex items-center px-3.5 py-2 focus-within:border-aiCyan">
       <svg class="w-4 h-4 text-aiCyan shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-      <input id="searchInput" type="text" autocomplete="off" placeholder="Search title, category (animated, horror, sci-fi...)" class="bg-transparent text-white w-full px-2.5 text-sm focus:outline-none placeholder-zinc-400">
+      <input id="searchInput" type="text" autocomplete="off" placeholder="Search title or category (animated, horror, sci-fi...)" class="bg-transparent text-white w-full px-2.5 text-sm focus:outline-none placeholder-zinc-400">
       <span id="searchThinking" class="hidden mr-2 text-xs text-aiCyan animate-pulse">...</span>
       <button id="clearSearchBtn" type="button" onclick="clearHeaderSearch()" class="hidden text-zinc-400 hover:text-white px-1 cursor-pointer">✕</button>
     </div>
 
-    <div id="searchSuggestBox" class="hidden absolute left-0 right-0 mt-2 rounded-2xl bg-[#090e1a]/98 border border-aiCyan/30 shadow-2xl modal-glass p-3.5 z-[70] space-y-3">
-      <div>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-aiCyan mb-2">Top Searches & Categories</p>
-        <div id="searchQuickChips" class="flex flex-wrap gap-1.5"></div>
+    <div id="searchSuggestBox" style="background:rgba(9,13,22,0.97)" class="hidden absolute left-0 right-0 mt-2 rounded-2xl border border-aiCyan/30 shadow-[0_20px_50px_rgba(0,0,0,0.85)] p-3.5 z-[80] space-y-2.5">
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <span class="text-[11px] font-bold uppercase tracking-widest text-aiCyan">Recent Searches</span>
+        <button id="clearAllRecentBtn" type="button" onmousedown="event.preventDefault()" onclick="clearAllRecentSearches()" class="hidden text-[11px] font-bold text-red-300 hover:text-red-200 cursor-pointer">Clear All</button>
       </div>
-      <p class="text-[10px] text-zinc-400">Tip: Search by title (<span class="text-zinc-200">Inception</span>), category (<span class="text-aiCyan">animated</span>, <span class="text-aiCyan">horror</span>, <span class="text-aiCyan">sci-fi</span>), language (<span class="text-aiCyan">hindi</span>, <span class="text-aiCyan">tamil</span>), or <span class="text-aiCyan">top search</span>.</p>
+      <div id="recentSearchList" class="space-y-1 max-h-60 overflow-y-auto custom-scrollbar"></div>
     </div>
   </div>
 </header>
 
 <section id="searchView" class="hidden min-h-screen pt-8 px-4 sm:px-10 pb-14">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
     <div><h2 id="globalSearchTitle" class="text-xl sm:text-2xl font-bold">Results</h2><p id="globalSearchScopeLabel" class="text-xs text-aiCyan"></p></div>
     <button onclick="clearHeaderSearch()" class="liquid-pill text-xs text-aiCyan px-4 py-1.5 rounded-full font-bold cursor-pointer">← Back</button>
   </div>
-  <div id="searchCategoryBar" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-4 mb-3"></div>
   <div id="searchGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
   <div id="searchEmpty" class="hidden text-center py-20 text-zinc-400">No matching titles found in this section.</div>
+  <div id="searchPaginationWrap" class="hidden text-center pt-8">
+    <button id="searchLoadMoreBtn" type="button" onclick="loadMoreSearch()" class="liquid-pill px-8 py-3 rounded-full text-xs font-bold text-aiCyan cursor-pointer">Load More Results</button>
+  </div>
+  <div id="searchSentinel" class="h-4"></div>
 </section>
 
 <section id="errorView" class="hidden min-h-[80vh] flex items-center justify-center px-6 text-center">
@@ -743,16 +756,10 @@ body.swarm-building .animate-pulse {
   </div>
 </section>
 
-<!-- Watch Me In-Page Overlay (Plays animation.html & returns cleanly to main website) -->
-<div id="watchMeModal" class="fixed inset-0 z-[130] hidden bg-black flex flex-col">
-  <div class="flex items-center justify-between px-4 sm:px-6 py-3 bg-[#07090f]/95 border-b border-white/10">
-    <span class="text-xs font-bold uppercase tracking-widest text-aiCyan">Flixora Watch Me</span>
-    <div class="flex items-center gap-2">
-      <a href="https://dj4550797-lab.github.io/Flixora-Movie-Finder/animation.html" target="_blank" rel="noopener noreferrer" class="liquid-pill px-3 py-1.5 rounded-full text-[11px] font-semibold text-zinc-200">New Tab ↗</a>
-      <button type="button" onclick="closeWatchMe()" class="bg-gradient-to-r from-aiCyan to-aiBlue text-black font-black px-4 py-1.5 rounded-full text-xs cursor-pointer">← Back to Website</button>
-    </div>
-  </div>
-  <iframe id="watchMeFrame" title="Flixora Watch Me Experience" class="w-full flex-1 border-0 bg-black" allow="autoplay; fullscreen; encrypted-media"></iframe>
+<!-- Watch Me Pure Fullscreen Overlay (No Header Bar — Auto-returns directly to Main Website when finished) -->
+<div id="watchMeModal" class="fixed inset-0 z-[160] hidden bg-[#030307]">
+  <button type="button" onclick="closeWatchMe()" aria-label="Close Watch Me" class="fixed top-3 right-3 z-[170] w-8 h-8 rounded-full bg-black/50 border border-white/15 text-zinc-300 hover:text-white hover:border-aiCyan flex items-center justify-center text-xs opacity-60 hover:opacity-100 transition cursor-pointer">✕</button>
+  <iframe id="watchMeFrame" title="Flixora Watch Me" class="w-full h-full border-0 bg-[#030307]" allow="autoplay; fullscreen; encrypted-media"></iframe>
 </div>
 
 <div id="detailsModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-0 sm:p-4 bg-black/90 modal-glass">
@@ -841,6 +848,7 @@ let ytReady=0,heroP=null,heroReady=0,modP=null,slides=[],homeTop=[],hIdx=0,trTry
 let heroCanAutoPlay=false;
 let homeEarlyRowsPromise=Promise.resolve();
 let modalVideoKeys=[],modalVideoIdx=0;
+let watchMeWarmed=false,watchMeLoadedOnce=false,watchMePoll=null;
 const ytValidCache=new Map();
 
 window.onYouTubeIframeAPIReady=()=>{
@@ -986,23 +994,86 @@ function fallbackCopy(txt,msg){
 }
 
 /* ==========================================================================
-   WATCH ME IN-PAGE OVERLAY (PLAYS ANIMATION.HTML WITHOUT EXITING WEBSITE)
+   WATCH ME FULLSCREEN PLAYER (ZERO HEADER BAR, AUTO-RETURN, ASSET PRE-WARM)
    ========================================================================== */
+function warmWatchMeAssets(){
+  if(watchMeWarmed)return;
+  watchMeWarmed=true;
+  const imgs=[
+    'https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1535016120720-40c646be5580?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1593784991095-a205069470b6?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=500&q=80',
+    'https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&w=500&q=80'
+  ];
+  const runWarm=()=>{
+    imgs.forEach((u,idx)=>{
+      setTimeout(()=>{
+        const im=new Image();
+        im.decoding='async';
+        im.src=u;
+      },idx*60);
+    });
+  };
+  if(window.requestIdleCallback)requestIdleCallback(runWarm,{timeout:2000});
+  else setTimeout(runWarm,800);
+}
+
 function openWatchMe(){
   if(heroReady)heroP?.pauseVideo?.();
   clearTimeout(fbTmr);clearTimeout(playChkTmr);
   const m=$('watchMeModal'),f=$('watchMeFrame');
-  f.src=FLIXORA_ASSETS.watchMeUrl;
+  watchMeLoadedOnce=false;
+  document.body.classList.add('watchme-active');
   m.classList.remove('hidden');
   document.body.style.overflow='hidden';
+
+  f.onload=()=>{
+    if(!watchMeLoadedOnce){
+      watchMeLoadedOnce=true;
+      return;
+    }
+    closeWatchMe();
+  };
+  f.src=FLIXORA_ASSETS.watchMeUrl;
+
+  clearInterval(watchMePoll);
+  watchMePoll=setInterval(()=>{
+    if($('watchMeModal').classList.contains('hidden')){clearInterval(watchMePoll);return}
+    try{
+      const href=f.contentWindow?.location?.href;
+      if(watchMeLoadedOnce&&(!href||href==='about:blank')){
+        closeWatchMe();
+      }
+    }catch{}
+  },250);
 }
+
 function closeWatchMe(){
+  clearInterval(watchMePoll);watchMePoll=null;
   const m=$('watchMeModal'),f=$('watchMeFrame');
+  f.onload=null;
   m.classList.add('hidden');
   f.src='about:blank';
+  document.body.classList.remove('watchme-active');
   document.body.style.overflow='';
   if(heroCanAutoPlay&&heroReady&&!$('heroSection').classList.contains('hidden'))heroP?.playVideo?.();
 }
+
 window.addEventListener('message',e=>{
   if(e?.data==='flixora-watchme-done'||e?.data?.type==='flixora-watchme-done'){
     if(!$('watchMeModal').classList.contains('hidden'))closeWatchMe();
@@ -1083,7 +1154,7 @@ async function openPage(p){
   page=p;document.querySelectorAll('.nav-link').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
   $('watchMeBtn')?.classList.toggle('hidden',p!=='home');
   $('searchInput').placeholder={
-    home:'Search title, category (animated, horror, sci-fi...)',
+    home:'Search title or category (animated, horror, sci-fi...)',
     movie:'Search Movies by name, genre, mood, year...',
     tv:'Search TV Series by name, genre, mood...',
     indiantv:'Search Indian TV by name, genre, language...',
@@ -1091,7 +1162,6 @@ async function openPage(p){
     kdrama:'Search K-Drama by name, genre (romance, thriller...)'
   }[p];
   $('searchInput').value='';$('clearSearchBtn').classList.add('hidden');$('searchSuggestBox').classList.add('hidden');$('searchView').classList.add('hidden');$('errorView').classList.add('hidden');$('heroSection').classList.remove('hidden');
-  renderSearchChips();
   if(p==='home'){
     $('dedicatedView').classList.add('hidden');$('homeView').classList.remove('hidden');scrollTo(0,0);
     if(homeTop.length){slides=homeTop;prefetchSlideTrailers(slides.slice(0,3));showSlide(0);renderHome()}else{initHome()}
@@ -1651,45 +1721,83 @@ function closeModal(){
 }
 
 /* ==========================================================================
-   SMART CATEGORY, TOP-SEARCH & MULTI-SCOPE SEARCH ENGINE
+   RECENT SEARCHES (CLEAR ALL + 1-BY-1 CUT) & FULL MULTI-PAGE SMART SEARCH
    ========================================================================== */
-const SEARCH_CHIPS = [
-  ['🔥 Top Search', 'top search'],
-  ['🎨 Animated', 'animated'],
-  ['💥 Action', 'action'],
-  ['👻 Horror', 'horror'],
-  ['🚀 Sci-Fi', 'sci-fi'],
-  ['😂 Comedy', 'comedy'],
-  ['🔪 Thriller', 'thriller'],
-  ['🕵️ Crime', 'crime'],
-  ['❤️ Romance', 'romance'],
-  ['🇮🇳 Hindi / Indian', 'hindi'],
-  ['⛩️ Anime', 'anime'],
-  ['🇰🇷 K-Drama', 'korean'],
-  ['⭐ Top Rated', 'top rated'],
-  ['🍿 Upcoming', 'upcoming']
-];
+const RECENT_KEY = 'fx_recent_searches';
+let searchState = { seq: 0, query: '', endpoints: [], nextPage: 1, maxPages: 1, seen: new Set(), loading: false, scope: 'home', parsed: null };
+let searchObs = null;
 
-function renderSearchChips() {
-  const box = $('searchQuickChips');
-  const bar = $('searchCategoryBar');
-  if (box) {
-    box.innerHTML = SEARCH_CHIPS.map(([label, q]) =>
-      `<button type="button" onmousedown="event.preventDefault()" onclick="triggerQuickSearch('${q}')" class="liquid-pill px-2.5 py-1 rounded-full text-[11px] font-semibold text-zinc-200 hover:text-aiCyan cursor-pointer">${label}</button>`
-    ).join('');
-  }
-  if (bar) {
-    bar.innerHTML = SEARCH_CHIPS.map(([label, q]) =>
-      `<button type="button" onclick="triggerQuickSearch('${q}')" class="liquid-pill px-3 py-1 rounded-full text-xs font-semibold text-zinc-200 hover:text-aiCyan whitespace-nowrap cursor-pointer">${label}</button>`
-    ).join('');
-  }
+function getRecentSearches() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.trim()) : [];
+  } catch { return []; }
 }
-
-function triggerQuickSearch(q) {
-  $('searchInput').value = q;
+function saveRecentSearches(arr) {
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0, 12))); } catch {}
+}
+function addRecentSearch(term) {
+  const clean = term.trim();
+  if (clean.length < 2) return;
+  const list = getRecentSearches().filter(x => x.toLowerCase() !== clean.toLowerCase());
+  list.unshift(clean);
+  saveRecentSearches(list);
+  renderRecentSearches();
+}
+function removeRecentSearch(idx) {
+  const list = getRecentSearches();
+  list.splice(idx, 1);
+  saveRecentSearches(list);
+  renderRecentSearches();
+}
+function clearAllRecentSearches() {
+  saveRecentSearches([]);
+  renderRecentSearches();
+}
+function useRecentSearch(term) {
+  $('searchInput').value = term;
   $('clearSearchBtn').classList.remove('hidden');
   $('searchSuggestBox').classList.add('hidden');
-  runSearch(q);
+  runSearch(term);
+}
+function renderRecentSearches() {
+  const list = getRecentSearches();
+  const wrap = $('recentSearchList');
+  const clearBtn = $('clearAllRecentBtn');
+  if (!wrap) return;
+  clearBtn.classList.toggle('hidden', list.length === 0);
+  if (!list.length) {
+    wrap.innerHTML = '<p class="text-xs text-zinc-400 py-2">No recent searches yet. Search any movie, series, or category (e.g. animated, horror, action, avengers).</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  list.forEach((term, idx) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 hover:bg-white/10 transition';
+
+    const leftBtn = document.createElement('button');
+    leftBtn.type = 'button';
+    leftBtn.className = 'flex items-center gap-2.5 flex-1 text-left text-xs text-zinc-100 font-medium truncate cursor-pointer';
+    leftBtn.onmousedown = e => e.preventDefault();
+    leftBtn.onclick = () => useRecentSearch(term);
+    leftBtn.innerHTML = `<svg class="w-3.5 h-3.5 text-aiCyan shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+    const span = document.createElement('span');
+    span.className = 'truncate';
+    span.textContent = term;
+    leftBtn.appendChild(span);
+
+    const cutBtn = document.createElement('button');
+    cutBtn.type = 'button';
+    cutBtn.title = 'Remove';
+    cutBtn.className = 'text-zinc-400 hover:text-red-300 px-1.5 py-0.5 text-xs font-bold cursor-pointer shrink-0';
+    cutBtn.textContent = '✕';
+    cutBtn.onmousedown = e => e.preventDefault();
+    cutBtn.onclick = () => removeRecentSearch(idx);
+
+    row.appendChild(leftBtn);
+    row.appendChild(cutBtn);
+    wrap.appendChild(row);
+  });
 }
 
 function parseSmartSearch(raw) {
@@ -1726,27 +1834,32 @@ function parseSmartSearch(raw) {
     korean: 'ko', kdrama: 'ko', 'k-drama': 'ko',
     japanese: 'ja', anime: 'ja', spanish: 'es'
   };
+  const qualifierTokens = new Set(['movie', 'movies', 'film', 'films', 'series', 'show', 'shows', 'tv', 'webseries', 'serial', 'top', 'best', 'rated', 'trending', 'popular', 'search', 'searches', 'hot', 'viral', 'upcoming', 'new', 'latest', 'indian', 'india', 'all', 'full', 'category', 'sci', 'fi']);
 
   const mGenres = new Set();
   const tGenres = new Set();
   let lang = '';
   let country = '';
-  let intent = ''; // 'top_rated' | 'trending' | 'upcoming'
+  let intent = '';
   let year = '';
   let wantMovie = false;
   let wantTv = false;
+  const unmatchedTokens = [];
 
   tokens.forEach(tok => {
-    if (genreMovieMap[tok]) mGenres.add(genreMovieMap[tok]);
-    if (genreTvMap[tok]) tGenres.add(genreTvMap[tok]);
-    if (langMap[tok]) lang = langMap[tok];
-    if (tok === 'indian' || tok === 'india' || tok === 'bollywood' || tok === 'hindi') country = 'IN';
-    if (tok === 'top' || tok === 'best' || tok === 'rated') intent = 'top_rated';
-    if (tok === 'trending' || tok === 'popular' || tok === 'search' || tok === 'searches' || tok === 'hot' || tok === 'viral') intent = intent || 'trending';
-    if (tok === 'upcoming' || tok === 'new' || tok === 'latest') intent = 'upcoming';
-    if (/^(19\d\d|20[0-2]\d)$/.test(tok)) year = tok;
-    if (tok === 'movie' || tok === 'movies' || tok === 'film' || tok === 'films') wantMovie = true;
-    if (tok === 'series' || tok === 'show' || tok === 'shows' || tok === 'tv' || tok === 'webseries' || tok === 'serial') wantTv = true;
+    let matched = false;
+    if (genreMovieMap[tok]) { mGenres.add(genreMovieMap[tok]); matched = true; }
+    if (genreTvMap[tok]) { tGenres.add(genreTvMap[tok]); matched = true; }
+    if (langMap[tok]) { lang = langMap[tok]; matched = true; }
+    if (tok === 'indian' || tok === 'india' || tok === 'bollywood' || tok === 'hindi') { country = 'IN'; matched = true; }
+    if (tok === 'top' || tok === 'best' || tok === 'rated') { intent = 'top_rated'; matched = true; }
+    if (tok === 'trending' || tok === 'popular' || tok === 'search' || tok === 'searches' || tok === 'hot' || tok === 'viral') { intent = intent || 'trending'; matched = true; }
+    if (tok === 'upcoming' || tok === 'new' || tok === 'latest') { intent = 'upcoming'; matched = true; }
+    if (/^(19\d\d|20[0-2]\d)$/.test(tok)) { year = tok; matched = true; }
+    if (tok === 'movie' || tok === 'movies' || tok === 'film' || tok === 'films') { wantMovie = true; matched = true; }
+    if (tok === 'series' || tok === 'show' || tok === 'shows' || tok === 'tv' || tok === 'webseries' || tok === 'serial') { wantTv = true; matched = true; }
+    if (qualifierTokens.has(tok)) matched = true;
+    if (!matched) unmatchedTokens.push(tok);
   });
 
   if (q.includes('sci fi') || q.includes('sci-fi')) { mGenres.add(878); tGenres.add(10765); }
@@ -1754,7 +1867,7 @@ function parseSmartSearch(raw) {
   if (q.includes('top rated')) intent = 'top_rated';
   if (q.includes('indian tv')) { country = 'IN'; wantTv = true; }
 
-  const isCategoryQuery = mGenres.size > 0 || tGenres.size > 0 || Boolean(lang) || Boolean(country) || Boolean(intent) || Boolean(year);
+  const isCategoryQuery = (mGenres.size > 0 || tGenres.size > 0 || Boolean(lang) || Boolean(country) || Boolean(intent) || Boolean(year)) && unmatchedTokens.length === 0;
   return {
     isCategoryQuery,
     mGenres: [...mGenres],
@@ -1768,18 +1881,115 @@ function parseSmartSearch(raw) {
   };
 }
 
-function dedupeMedia(list) {
-  const seen = new Set();
-  const out = [];
-  for (const it of list) {
+function appendSearchItems(items, sc, p) {
+  const grid = $('searchGrid');
+  if (!grid || !items.length) return 0;
+  const frag = document.createDocumentFragment();
+  let added = 0;
+
+  for (const it of items) {
     if (!it?.poster_path) continue;
     const tp = it.media_type || (it.first_air_date ? 'tv' : 'movie');
-    const key = `${tp}:${it.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ ...it, media_type: tp });
+    if (tp !== 'movie' && tp !== 'tv') continue;
+
+    if (sc === 'movie' && !p?.mGenres?.includes(16) && isAni(it)) continue;
+    if (sc === 'tv' && !p?.tGenres?.includes(16) && isAnimeOrKo(it)) continue;
+    if (sc === 'indiantv' && !isIndianTV(it)) continue;
+    if (sc === 'anime' && !isAni(it)) continue;
+    if (sc === 'kdrama' && it.original_language !== 'ko') continue;
+
+    const uid = `${tp}:${it.id}`;
+    if (searchState.seen.has(uid)) continue;
+    searchState.seen.add(uid);
+    frag.appendChild(card({ ...it, media_type: tp }, tp, 'portrait', null, 1));
+    added++;
   }
-  return out;
+  grid.appendChild(frag);
+  return added;
+}
+
+async function fetchSearchPages(startPg, countPages) {
+  const st = searchState;
+  const seq = st.seq;
+  if (st.loading || startPg > st.maxPages) return;
+  st.loading = true;
+  $('searchLoadMoreBtn').textContent = 'Loading more...';
+
+  const pagesToFetch = [];
+  for (let i = 0; i < countPages; i++) {
+    const pg = startPg + i;
+    if (pg <= st.maxPages) pagesToFetch.push(pg);
+  }
+
+  const reqs = [];
+  pagesToFetch.forEach(pg => {
+    st.endpoints.forEach(ep => {
+      const sep = ep.url.includes('?') ? '&' : '?';
+      reqs.push(api(`${ep.url}${sep}page=${pg}`).then(d => ({ ep, pg, data: d })));
+    });
+  });
+
+  let colPromise = Promise.resolve([]);
+  if (startPg === 1 && !st.parsed.isCategoryQuery && (st.scope === 'home' || st.scope === 'movie')) {
+    colPromise = api(`/search/collection?query=${encodeURIComponent(st.query)}`).then(async cd => {
+      const cols = (cd?.results || []).slice(0, 3);
+      const details = await Promise.all(cols.map(c => api(`/collection/${c.id}`)));
+      return details.flatMap(col => (col?.parts || []).map(pt => ({ ...pt, media_type: 'movie' })));
+    }).catch(() => []);
+  }
+
+  const [results, colParts] = await Promise.all([Promise.all(reqs), colPromise]);
+  if (seq !== sSeq) { st.loading = false; return; }
+
+  let maxFound = 1;
+  const byPage = new Map();
+  results.forEach(({ ep, pg, data }) => {
+    if (!data?.results) return;
+    maxFound = Math.max(maxFound, Math.min(25, data.total_pages || 1));
+    if (!byPage.has(pg)) byPage.set(pg, []);
+    byPage.get(pg).push(data.results.map(x => ({ ...x, media_type: x.media_type || ep.type })));
+  });
+
+  st.maxPages = Math.min(25, Math.max(st.maxPages, maxFound));
+  st.nextPage = Math.max(st.nextPage, startPg + pagesToFetch.length);
+
+  const batchItems = [];
+  pagesToFetch.forEach(pg => {
+    const lists = byPage.get(pg) || [];
+    const maxL = Math.max(0, ...lists.map(l => l.length));
+    for (let i = 0; i < maxL; i++) {
+      for (const l of lists) {
+        if (l[i]) batchItems.push(l[i]);
+      }
+    }
+  });
+  if (colParts.length) batchItems.push(...colParts);
+
+  appendSearchItems(batchItems, st.scope, st.parsed);
+  st.loading = false;
+
+  const hasMore = st.nextPage <= st.maxPages;
+  $('searchPaginationWrap').classList.toggle('hidden', !hasMore);
+  $('searchLoadMoreBtn').textContent = 'Load More Results';
+  $('searchEmpty').classList.toggle('hidden', st.seen.size > 0);
+}
+
+function loadMoreSearch() {
+  if (!searchState.loading && searchState.nextPage <= searchState.maxPages) {
+    fetchSearchPages(searchState.nextPage, 2);
+  }
+}
+
+function setupSearchSentinel() {
+  if (searchObs) searchObs.disconnect();
+  const sen = $('searchSentinel');
+  if (!sen) return;
+  searchObs = new IntersectionObserver(entries => {
+    if (entries[0]?.isIntersecting && !$('searchView').classList.contains('hidden')) {
+      loadMoreSearch();
+    }
+  }, { rootMargin: '320px 0px' });
+  searchObs.observe(sen);
 }
 
 let sTmr;
@@ -1789,7 +1999,6 @@ function runSearch(q){
   $('searchThinking').classList.remove('hidden');let seq=++sSeq,sc=page;
   sTmr=setTimeout(async()=>{
     const p=parseSmartSearch(q);
-    let res=[];
     let modeLabel=`Scope: ${sc==='indiantv'?'INDIAN TV':sc.toUpperCase()}`;
 
     const buildDiscover=(kind)=>{
@@ -1826,76 +2035,71 @@ function runSearch(q){
       return `/discover/${kind}?${params.toString()}`;
     };
 
+    const endpoints=[];
     if(p.isCategoryQuery){
-      modeLabel=`Smart Category • ${sc==='indiantv'?'INDIAN TV':sc.toUpperCase()}`;
-      const tasks=[];
+      modeLabel=`Full Category • ${sc==='indiantv'?'INDIAN TV':sc.toUpperCase()}`;
       if(sc==='home'){
         if(p.intent==='trending'&&!p.mGenres.length&&!p.lang&&!p.country&&!p.year){
-          tasks.push(api('/trending/all/day').then(d=>(d?.results||[])));
+          endpoints.push({url:'/trending/all/day',type:null});
         }else{
-          if(!p.wantTv)tasks.push(api(buildDiscover('movie')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'movie'}))));
-          if(!p.wantMovie)tasks.push(api(buildDiscover('tv')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'tv'}))));
+          if(!p.wantTv)endpoints.push({url:buildDiscover('movie'),type:'movie'});
+          if(!p.wantMovie)endpoints.push({url:buildDiscover('tv'),type:'tv'});
         }
-        // Also merge direct title matches in case keyword is also a movie name
-        tasks.push(api(`/search/multi?query=${encodeURIComponent(q)}`).then(d=>(d?.results||[]).filter(i=>i.media_type==='movie'||i.media_type==='tv')));
       }else if(sc==='movie'){
-        tasks.push(api(buildDiscover('movie')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'movie'}))));
-        tasks.push(api(`/search/movie?query=${encodeURIComponent(q)}`).then(d=>(d?.results||[]).map(x=>({...x,media_type:'movie'}))));
-      }else if(sc==='tv'){
-        tasks.push(api(buildDiscover('tv')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'tv'}))));
-        tasks.push(api(`/search/tv?query=${encodeURIComponent(q)}`).then(d=>(d?.results||[]).map(x=>({...x,media_type:'tv'}))));
-      }else if(sc==='indiantv'){
-        tasks.push(api(buildDiscover('tv')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'tv'}))));
-        tasks.push(api(`/search/tv?query=${encodeURIComponent(q)}`).then(d=>(d?.results||[]).filter(isIndianTV).map(x=>({...x,media_type:'tv'}))));
-      }else if(sc==='anime'){
-        if(!p.wantMovie)tasks.push(api(buildDiscover('tv')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'tv'}))));
-        if(!p.wantTv)tasks.push(api(buildDiscover('movie')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'movie'}))));
-      }else if(sc==='kdrama'){
-        if(!p.wantMovie)tasks.push(api(buildDiscover('tv')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'tv'}))));
-        if(!p.wantTv)tasks.push(api(buildDiscover('movie')).then(d=>(d?.results||[]).map(x=>({...x,media_type:'movie'}))));
+        endpoints.push({url:buildDiscover('movie'),type:'movie'});
+      }else if(sc==='tv'||sc==='indiantv'){
+        endpoints.push({url:buildDiscover('tv'),type:'tv'});
+      }else if(sc==='anime'||sc==='kdrama'){
+        if(!p.wantMovie)endpoints.push({url:buildDiscover('tv'),type:'tv'});
+        if(!p.wantTv)endpoints.push({url:buildDiscover('movie'),type:'movie'});
       }
-      const batches=await Promise.all(tasks);
-      // Interleave movie & tv discover results cleanly before merging
-      if(batches.length>=2&&sc==='home'&&!p.wantTv&&!p.wantMovie){
-        const merged=[];
-        const maxLen=Math.max(batches[0].length,batches[1].length);
-        for(let i=0;i<maxLen;i++){
-          if(batches[0][i])merged.push(batches[0][i]);
-          if(batches[1][i])merged.push(batches[1][i]);
-        }
-        if(batches[2])merged.push(...batches[2]);
-        res=dedupeMedia(merged);
-      }else{
-        res=dedupeMedia(batches.flat());
-      }
-      if(sc==='movie'&&!p.mGenres.includes(16))res=pureM(res);
-      else if(sc==='tv'&&!p.tGenres.includes(16))res=pureT(res);
     }else{
-      if(sc==='home'){res=((await api(`/search/multi?query=${encodeURIComponent(q)}`))?.results||[]).filter(i=>(i.media_type==='movie'||i.media_type==='tv')&&i.poster_path)}
-      else if(sc==='movie'){res=pureM((await api(`/search/movie?query=${encodeURIComponent(q)}`))?.results).map(i=>({...i,media_type:'movie'}))}
-      else if(sc==='tv'){res=pureT((await api(`/search/tv?query=${encodeURIComponent(q)}`))?.results).map(i=>({...i,media_type:'tv'}))}
-      else if(sc==='indiantv'){res=((await api(`/search/tv?query=${encodeURIComponent(q)}`))?.results||[]).filter(isIndianTV).map(i=>({...i,media_type:'tv'}))}
-      else if(sc==='anime'){let[t,m]=await Promise.all([api(`/search/tv?query=${encodeURIComponent(q)}`),api(`/search/movie?query=${encodeURIComponent(q)}`)]);res=[...(t?.results||[]).filter(i=>i.poster_path&&isAni(i)).map(i=>({...i,media_type:'tv'})),...(m?.results||[]).filter(i=>i.poster_path&&isAni(i)).map(i=>({...i,media_type:'movie'}))]}
-      else if(sc==='kdrama'){res=((await api(`/search/tv?query=${encodeURIComponent(q)}`))?.results||[]).filter(i=>i.poster_path&&i.original_language==='ko').map(i=>({...i,media_type:'tv'}))}
+      const enc=encodeURIComponent(q);
+      if(sc==='home'){
+        endpoints.push({url:`/search/movie?query=${enc}`,type:'movie'});
+        endpoints.push({url:`/search/tv?query=${enc}`,type:'tv'});
+      }else if(sc==='movie'){
+        endpoints.push({url:`/search/movie?query=${enc}`,type:'movie'});
+      }else if(sc==='tv'||sc==='indiantv'){
+        endpoints.push({url:`/search/tv?query=${enc}`,type:'tv'});
+      }else if(sc==='anime'||sc==='kdrama'){
+        endpoints.push({url:`/search/tv?query=${enc}`,type:'tv'});
+        endpoints.push({url:`/search/movie?query=${enc}`,type:'movie'});
+      }
     }
 
     if(seq!==sSeq||!$('searchInput').value.trim())return;
-    $('searchThinking').classList.add('hidden');if(heroReady)heroP?.pauseVideo?.();
+
+    $('searchGrid').innerHTML='';
+    $('searchEmpty').classList.add('hidden');
+    $('searchPaginationWrap').classList.add('hidden');
+
+    searchState={seq,query:q,endpoints,nextPage:1,maxPages:3,seen:new Set(),loading:false,scope:sc,parsed:p};
+    setupSearchSentinel();
+
+    if(heroReady)heroP?.pauseVideo?.();
     $('heroSection').classList.add('hidden');$('homeView').classList.add('hidden');$('dedicatedView').classList.add('hidden');$('searchView').classList.remove('hidden');
     $('globalSearchTitle').innerText=`Results: "${q}"`;$('globalSearchScopeLabel').innerText=modeLabel;
-    $('searchEmpty').classList.toggle('hidden',res.length>0);fillRow('searchGrid',res,null,'portrait',1);scrollTo(0,0);
+    scrollTo(0,0);
+
+    await fetchSearchPages(1,3);
+    if(seq!==sSeq)return;
+    $('searchThinking').classList.add('hidden');
+    addRecentSearch(q);
   },340);
 }
 
 $('searchInput').addEventListener('focus',()=>{
-  renderSearchChips();
-  $('searchSuggestBox').classList.remove('hidden');
+  if(!$('searchInput').value.trim()){
+    renderRecentSearches();
+    $('searchSuggestBox').classList.remove('hidden');
+  }
 });
 $('searchInput').addEventListener('input',e=>{
   let q=e.target.value.trim();
   $('clearSearchBtn').classList.toggle('hidden',!q);
   if(q)$('searchSuggestBox').classList.add('hidden');
-  else $('searchSuggestBox').classList.remove('hidden');
+  else{renderRecentSearches();$('searchSuggestBox').classList.remove('hidden');}
   runSearch(q);
 });
 $('searchInput').addEventListener('keydown',e=>{
@@ -2590,6 +2794,7 @@ const IntroController = (() => {
     heroCanAutoPlay = true;
     if (slides.length) playHero(hIdx);
     autoScroll();
+    warmWatchMeAssets();
   }
 
   function finishToWebsite(nextState) {
@@ -2867,7 +3072,7 @@ const IntroController = (() => {
     if (started) return;
     started = true;
     bindAssets();
-    renderSearchChips();
+    renderRecentSearches();
     document.body.style.overflow = 'hidden';
 
     homeInitPromise = initHome(f => { streamFrac = Math.max(streamFrac, f); })
