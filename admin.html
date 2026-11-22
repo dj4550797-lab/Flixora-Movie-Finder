@@ -288,8 +288,8 @@
             <form id="loginForm" class="space-y-4">
                 <div class="space-y-1.5">
                     <label for="loginEmail" class="text-xs font-semibold text-zinc-300">Super Admin Email</label>
-                    <input id="loginEmail" type="email" required autocomplete="username" placeholder="admin@flixora.app"
-                        class="fx-input">
+                    <input id="loginEmail" type="email" required autocomplete="username"
+                        placeholder="dj4550797@gmail.com" class="fx-input">
                 </div>
                 <div class="space-y-1.5">
                     <div class="flex items-center justify-between">
@@ -303,45 +303,16 @@
                 <p id="loginRateNotice" class="hidden text-[11px] text-amber-300 font-mono"></p>
                 <button id="loginSubmitBtn" type="submit" class="fx-btn-primary w-full py-3 text-sm">Sign In to
                     Studio</button>
-            
-                <div class="flex items-center justify-between text-xs pt-2">
-                    <span class="text-zinc-400">First time setup?</span>
-                    <button type="button" onclick="AuthUI.showMode('signup')"
-                        class="text-aiCyan hover:underline font-semibold">Create Super Admin Account</button>
+                <div class="pt-2 text-center text-[11px] text-zinc-500">
+                    <span>Provisioned via </span><strong class="text-zinc-400">Supabase Dashboard → Auth →
+                        Users</strong>
                 </div>
+
+
             </form>
 
             <!-- Super Admin Sign Up / Registration Form -->
-            <form id="signupForm" class="hidden space-y-4">
-                <p class="text-xs text-zinc-300 leading-relaxed">Register a new Super Admin account for this Supabase project.</p>
-                <div class="space-y-1.5">
-                    <label for="signupEmail" class="text-xs font-semibold text-zinc-300">Super Admin Email</label>
-                    <input id="signupEmail" type="email" required autocomplete="username" placeholder="admin@flixora.app" class="fx-input">
-                </div>
-                <div class="space-y-1.5">
-                    <label for="signupPassword" class="text-xs font-semibold text-zinc-300">Password (min 8 characters)</label>
-                    <input id="signupPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="••••••••••••" class="fx-input">
-                </div>
-                <button id="signupSubmitBtn" type="submit" class="fx-btn-primary w-full py-3 text-sm">Register Super Admin</button>
-                <div class="text-center pt-1">
-                    <button type="button" onclick="AuthUI.showMode('login')" class="text-xs text-zinc-400 hover:text-white">← Back to Sign In</button>
-                </div>
 
-            <!-- Password Reset Request Form -->
-            <form id="forgotForm" class="hidden space-y-4">
-                <p class="text-xs text-zinc-300 leading-relaxed">Enter your authorized Super Admin email to receive a
-                    secure password reset link.</p>
-                <div class="space-y-1.5">
-                    <label for="forgotEmail" class="text-xs font-semibold text-zinc-300">Super Admin Email</label>
-                    <input id="forgotEmail" type="email" required placeholder="admin@flixora.app" class="fx-input">
-                </div>
-                <div class="flex gap-2.5">
-                    <button type="button" onclick="AuthUI.showMode('login')"
-                        class="fx-btn-ghost px-4 py-2.5 text-xs font-bold">← Back</button>
-                    <button id="forgotSubmitBtn" type="submit" class="fx-btn-primary flex-1 py-2.5 text-xs">Send Reset
-                        Link</button>
-                </div>
-            </form>
 
             <!-- Recovery Mode Password Update Form -->
             <form id="recoveryForm" class="hidden space-y-4">
@@ -1426,6 +1397,20 @@
            ========================================================================== */
         const SUPABASE_URL = 'https://comxecntwlntgvjbvkjs.supabase.co';
         const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable__5xCvJeJren5zsyR33SkJQ_fYwAZIbX';
+
+        /* ==========================================================================
+           SUPER ADMIN AUTHORIZATION CONFIGURATION (SINGLE SUPER ADMIN ENFORCEMENT)
+           ========================================================================== */
+        /**
+         * 1. Paste your Super Admin UUID here from Supabase Dashboard -> Authentication -> Users.
+         *    Once configured, ONLY this specific UUID can authenticate and execute database actions.
+         */
+        const SUPER_ADMIN_UUID = '6e0bb664-d281-4384-a589-d9af8ef61ef9'; // e.g. '00000000-0000-0000-0000-000000000000'
+
+        /**
+         * 2. Authorized Super Admin Email:
+         */
+        const SUPER_ADMIN_EMAIL = 'dj4550797@gmail.com';
         const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
         const TMDB_ORG = 'https://image.tmdb.org/t/p/original';
 
@@ -1525,6 +1510,22 @@
             const RL_KEY = 'fx_admin_rl';
             let session = null;
 
+            function isAuthorizedSuperAdmin(user) {
+                if (!user) return false;
+                const confUuid = (typeof SUPER_ADMIN_UUID !== 'undefined' ? SUPER_ADMIN_UUID : '').trim();
+                const confEmail = (typeof SUPER_ADMIN_EMAIL !== 'undefined' ? SUPER_ADMIN_EMAIL : 'dj4550797@gmail.com').trim().toLowerCase();
+
+                // If SUPER_ADMIN_UUID is specified, strictly check user.id
+                if (confUuid) {
+                    return user.id === confUuid;
+                }
+                // During initial setup before UUID is pasted, authorize configured email
+                if (confEmail) {
+                    return (user.email || '').toLowerCase() === confEmail;
+                }
+                return false;
+            }
+
             function getRl() {
                 try { return JSON.parse(localStorage.getItem(RL_KEY) || '{"fails":0,"until":0}'); }
                 catch { return { fails: 0, until: 0 }; }
@@ -1552,13 +1553,6 @@
                 $('loginForm').classList.toggle('hidden', mode !== 'login');
                 $('forgotForm').classList.toggle('hidden', mode !== 'forgot');
                 $('recoveryForm').classList.toggle('hidden', mode !== 'recovery');
-                if ($('signupForm')) $('signupForm').classList.toggle('hidden', mode !== 'signup');
-            }
-                $('loginErrorBox').classList.add('hidden');
-                $('loginSuccessBox').classList.add('hidden');
-                $('loginForm').classList.toggle('hidden', mode !== 'login');
-                $('forgotForm').classList.toggle('hidden', mode !== 'forgot');
-                $('recoveryForm').classList.toggle('hidden', mode !== 'recovery');
             }
 
             function checkRateLimit() {
@@ -1574,11 +1568,17 @@
                 return true;
             }
 
-            function enterDashboard(sess) {
+            async function enterDashboard(sess) {
+                if (!isAuthorizedSuperAdmin(sess?.user)) {
+                    await sb.auth.signOut();
+                    lockToLogin(`Access Denied: Account ${sess?.user?.email || 'Unknown'} (UUID: ${sess?.user?.id}) is not the configured Super Admin.`);
+                    return;
+                }
                 session = sess;
                 $('authGate').classList.add('hidden');
                 $('adminShell').classList.remove('hidden');
-                $('adminEmailBadge').textContent = sess.user?.email || 'Super Admin';
+                const uId = sess.user?.id || '';
+                $('adminEmailBadge').innerHTML = `<span>${esc(sess.user?.email || 'Super Admin')}</span> <span class="font-mono text-[10px] text-aiCyan bg-aiCyan/10 px-2 py-0.5 rounded cursor-pointer border border-aiCyan/30" onclick="navigator.clipboard.writeText('${uId}');toast('Admin UUID copied!')" title="Click to copy Super Admin UUID">UUID: ${uId.slice(0, 8)}...</span>`;
                 AdminApp.boot(sess);
             }
 
@@ -1589,25 +1589,6 @@
                 showMode('login');
                 if (msg) showErr(msg);
             }
-
-            $('signupForm')?.addEventListener('submit', async e => {
-                e.preventDefault();
-                const email = $('signupEmail').value.trim();
-                const password = $('signupPassword').value;
-                await withLock($('signupSubmitBtn'), async () => {
-                    const { data, error } = await sb.auth.signUp({ email, password });
-                    if (error) { showErr(error.message || 'Registration failed.'); return; }
-                    if (data?.session) {
-                        setRl({ fails: 0, until: 0 });
-                        await AdminApp.logActivity(data.session, 'register', 'auth', data.session.user.id, 'New Super Admin registered and signed in');
-                        enterDashboard(data.session);
-                    } else {
-                        showOk('Super Admin account created! You can now sign in.');
-                        showMode('login');
-                        $('loginEmail').value = email;
-                    }
-                });
-            });
 
             $('loginForm').addEventListener('submit', async e => {
                 e.preventDefault();
@@ -1629,8 +1610,13 @@
                     }
                     setRl({ fails: 0, until: 0 });
                     $('loginPassword').value = '';
+                    if (!isAuthorizedSuperAdmin(data.session.user)) {
+                        await sb.auth.signOut();
+                        showErr(`Access Denied: Account "${data.session.user.email}" is not authorized as the Super Admin.`);
+                        return;
+                    }
                     await AdminApp.logActivity(data.session, 'login', 'auth', data.session.user.id, 'Super Admin signed in');
-                    enterDashboard(data.session);
+                    await enterDashboard(data.session);
                 });
             });
 
@@ -1673,8 +1659,16 @@
                 });
 
                 const { data, error } = await sb.auth.getSession();
-                if (!error && data?.session) enterDashboard(data.session);
-                else lockToLogin();
+                if (!error && data?.session) {
+                    if (isAuthorizedSuperAdmin(data.session.user)) {
+                        await enterDashboard(data.session);
+                    } else {
+                        await sb.auth.signOut();
+                        lockToLogin('Unauthorized user session ended.');
+                    }
+                } else {
+                    lockToLogin();
+                }
             }
 
             return { init, showMode, getSession: () => session, lockToLogin };
@@ -1825,7 +1819,9 @@
             });
 
             function buildSqlScript() {
-                const uid = AuthUI.getSession()?.user?.id || 'YOUR-ADMIN-USER-UUID';
+                const confUuid = (typeof SUPER_ADMIN_UUID !== 'undefined' ? SUPER_ADMIN_UUID : '').trim();
+                const sessionUid = AuthUI.getSession()?.user?.id;
+                const uid = confUuid || sessionUid || 'YOUR-SUPER-ADMIN-UUID';
                 return `-- ============================================================================
 -- FLIXORA ADMIN PANEL & MAIN SITE — FULL SUPABASE SCHEMA & RLS SETUP
 -- Run this script in: Supabase Dashboard -> SQL Editor -> New Query -> Run
@@ -2001,41 +1997,40 @@ CREATE POLICY "Public read site settings" ON public.website_settings FOR SELECT 
 DROP POLICY IF EXISTS "Public log validated events" ON public.analytics_events;
 CREATE POLICY "Public log validated events" ON public.analytics_events FOR INSERT TO anon, authenticated WITH CHECK (event_type IN ('page_view','search','detail_open','hero_interact','trailer_play','trailer_error','nav_click','js_error','api_error','load_error'));
 
--- IDEMPOTENT SUPER ADMIN POLICIES (SECURED TO AUTHENTICATED ADMINS)
+-- IDEMPOTENT SUPER ADMIN POLICIES (STRICTLY LOCKED TO SUPER ADMIN UUID: ${uid})
 DROP POLICY IF EXISTS "Admin all hero" ON public.hero_slides;
-CREATE POLICY "Admin all hero" ON public.hero_slides FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all hero" ON public.hero_slides FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin all content" ON public.content_overrides;
-CREATE POLICY "Admin all content" ON public.content_overrides FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all content" ON public.content_overrides FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin all sections" ON public.homepage_sections;
-CREATE POLICY "Admin all sections" ON public.homepage_sections FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all sections" ON public.homepage_sections FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin all section items" ON public.homepage_section_items;
-CREATE POLICY "Admin all section items" ON public.homepage_section_items FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all section items" ON public.homepage_section_items FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin all intro" ON public.intro_settings;
-CREATE POLICY "Admin all intro" ON public.intro_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all intro" ON public.intro_settings FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin all site settings" ON public.website_settings;
-CREATE POLICY "Admin all site settings" ON public.website_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all site settings" ON public.website_settings FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin all admin_settings" ON public.admin_settings;
-CREATE POLICY "Admin all admin_settings" ON public.admin_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all admin_settings" ON public.admin_settings FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin read analytics" ON public.analytics_events;
-CREATE POLICY "Admin read analytics" ON public.analytics_events FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admin read analytics" ON public.analytics_events FOR SELECT TO authenticated USING (auth.uid() = '${uid}'::uuid);
 
 DROP POLICY IF EXISTS "Admin all logs" ON public.admin_activity_logs;
-CREATE POLICY "Admin all logs" ON public.admin_activity_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin all logs" ON public.admin_activity_logs FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
--- STORAGE BUCKET FOR ASSETS
+-- STORAGE BUCKET FOR ASSETS (WRITE ACCESS RESTRICTED TO SUPER ADMIN UUID)
 INSERT INTO storage.buckets (id, name, public) VALUES ('flixora-assets', 'flixora-assets', true) ON CONFLICT (id) DO UPDATE SET public = true;
 DROP POLICY IF EXISTS "Public read flixora assets" ON storage.objects;
 CREATE POLICY "Public read flixora assets" ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id = 'flixora-assets');
 DROP POLICY IF EXISTS "Admin write flixora assets" ON storage.objects;
-CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authenticated USING (bucket_id = 'flixora-assets') WITH CHECK (bucket_id = 'flixora-assets');`;
-            }'::uuid) WITH CHECK (bucket_id = 'flixora-assets' AND auth.uid() = '${uid}'::uuid);`;
+CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authenticated USING (bucket_id = 'flixora-assets' AND auth.uid() = '${uid}'::uuid) WITH CHECK (bucket_id = 'flixora-assets' AND auth.uid() = '${uid}'::uuid);`;
             }
 
             function openSqlModal() {
@@ -3234,9 +3229,10 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
                 const sess = AuthUI.getSession();
                 const exp = sess?.expires_at ? new Date(sess.expires_at * 1000).toLocaleString() : 'Active';
                 $('secSessionInfo').innerHTML = `
-      <p>Email: <span class="text-white">${esc(sess?.user?.email)}</span></p>
-      <p>Admin UID: <span class="text-aiCyan">${esc(sess?.user?.id)}</span></p>
-      <p>Session Expires: <span class="text-zinc-200">${esc(exp)}</span></p>
+      <p>Email: <span class="text-white font-bold">${esc(sess?.user?.email)}</span></p>
+      <p>User UID: <span class="text-aiCyan font-mono select-all">${esc(sess?.user?.id)}</span> <button onclick="navigator.clipboard.writeText('${sess?.user?.id}');toast('UUID copied!')" class="text-[10px] text-aiCyan underline ml-2">Copy</button></p>
+      <p>Configured SUPER_ADMIN_UUID: <span class="font-mono text-zinc-300">${SUPER_ADMIN_UUID ? esc(SUPER_ADMIN_UUID) : '<em class="text-amber-300">Not configured (using email match)</em>'}</span></p>
+      <p>Session Status: <span class="text-emerald-300 font-semibold">Verified Super Admin</span> (Expires: ${esc(exp)})</p>
     `;
                 await probeTables();
             }
