@@ -41,3 +41,4 @@ const sectionMatches = idx.match(/id=["']([a-zA-Z0-9_\-]+)["']/g) || [];
 console.log('\n=== ID SCAN (Sample sections) ===');
 const sampleSecs = sectionMatches.filter(s => s.toLowerCase().includes('section') || s.toLowerCase().includes('row') || s.toLowerCase().includes('grid') || s.toLowerCase().includes('carousel') || s.toLowerCase().includes('movie') || s.toLowerCase().includes('anime') || s.toLowerCase().includes('trending'));
 console.log('Sample section IDs:', sampleSecs.slice(0, 20));
+

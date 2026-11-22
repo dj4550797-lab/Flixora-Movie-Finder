@@ -16,3 +16,4 @@ $zip.Dispose();
 
 fs.writeFileSync('extract_backup.ps1', psCmd);
 console.log('Script written to extract Index.html backup.');
+

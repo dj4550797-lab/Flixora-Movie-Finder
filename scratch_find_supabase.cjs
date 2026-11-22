@@ -9,3 +9,4 @@ if (match !== -1) {
 } else {
   console.log('FlixoraSupabase not found');
 }
+

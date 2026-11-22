@@ -18,3 +18,4 @@ policyMatches.forEach((s, i) => {
   const firstLine = s.trim().split('\n')[0];
   console.log(`[${i + 1}] ${firstLine}`);
 });
+
