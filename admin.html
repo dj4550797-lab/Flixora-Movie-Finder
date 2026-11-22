@@ -540,7 +540,55 @@
 
                 <!-- ==================== VIEW 3: CONTENT LIBRARY ==================== -->
                 <section id="view-content" class="admin-view hidden space-y-5">
-                    <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                        <div class="flex gap-2">
+                            <button id="tabModeOverrides" onclick="ContentMgr.switchTab('overrides')" class="fx-btn-primary px-3.5 py-1.5 text-xs font-bold">Database Overrides</button>
+                            <button id="tabModeWebsite" onclick="ContentMgr.switchTab('website')" class="fx-btn-ghost px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-aiCyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                                <span>Browse Live Website Rows</span>
+                            </button>
+                        </div>
+                        <button onclick="ContentMgr.openEditor()" class="fx-btn-primary px-4 py-2 text-xs">+ Import / Add Content</button>
+                    </div>
+
+                    <!-- Live Website Rows Browser Panel -->
+                    <div id="websiteBrowserPanel" class="hidden glass-panel rounded-2xl p-4 space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h4 class="font-bold text-sm text-aiCyan">Live Website Content Inspector</h4>
+                                <p class="text-[11px] text-zinc-400">Inspect content currently streaming in each section on Flixora's homepage. Click "Override / Edit" on any title to customize it in Supabase.</p>
+                            </div>
+                            <select id="webSectionSelect" onchange="ContentMgr.loadWebsiteSectionContent()" class="fx-input !w-auto text-xs font-semibold">
+                                <option value="/trending/all/day" data-shape="rank">Row 1: Global Top 10 Trending</option>
+                                <option value="/trending/movie/week" data-shape="wide">Row 2: Recommended For You</option>
+                                <option value="/discover/tv?with_origin_country=IN&without_genres=16&sort_by=popularity.desc" data-shape="wide">Row 3: Indian TV Shows & Web Series</option>
+                                <option value="/discover/movie?without_genres=16&sort_by=vote_average.desc&vote_count.gte=1200" data-shape="slant">Row 4: Because You Watched Cinema</option>
+                                <option value="/discover/movie?without_genres=16&sort_by=popularity.desc" data-shape="portrait">Row 5: Popular Blockbusters</option>
+                                <option value="/movie/upcoming" data-shape="leaf">Row 6: Upcoming Releases</option>
+                                <option value="/movie/now_playing" data-shape="chamfer">Row 7: Now Playing Theatres</option>
+                                <option value="/discover/tv?without_genres=16&without_original_language=ko&sort_by=popularity.desc" data-shape="arch">Row 8: Popular Web Series</option>
+                                <option value="/discover/tv?without_genres=16&without_original_language=ko&sort_by=vote_average.desc&vote_count.gte=400" data-shape="wide">Row 9: Top Rated TV Series</option>
+                                <option value="/discover/tv?with_genres=16&with_original_language=ja&sort_by=vote_average.desc&vote_count.gte=300" data-shape="chamfer">Row 10: Top Rated Anime</option>
+                                <option value="/discover/movie?with_genres=16&with_original_language=ja&sort_by=popularity.desc" data-shape="slant">Row 11: Popular Anime Movies</option>
+                                <option value="/discover/tv?with_original_language=ko&sort_by=popularity.desc" data-shape="wide">Row 12: Trending K-Dramas</option>
+                                <option value="/discover/tv?with_original_language=ko&sort_by=vote_average.desc&vote_count.gte=150" data-shape="portrait">Row 13: Top K-Dramas</option>
+                                <option value="/discover/movie?with_genres=28,12&without_genres=16" data-shape="slant">Row 14: Action & Adventure</option>
+                                <option value="/discover/movie?with_genres=878&without_genres=16" data-shape="chamfer">Row 15: Sci-Fi & Mind-Bending</option>
+                                <option value="/discover/movie?with_genres=27&without_genres=16" data-shape="portrait">Row 16: Horror & Supernatural</option>
+                                <option value="/discover/movie?with_genres=53&without_genres=16" data-shape="arch">Row 17: Dark Thrillers</option>
+                                <option value="/discover/movie?with_genres=35&without_genres=16" data-shape="leaf">Row 18: Comedy & Feel-Good</option>
+                                <option value="/discover/movie?with_genres=80,9648&without_genres=16" data-shape="wide">Row 19: Crime & Mystery</option>
+                                <option value="/discover/movie?with_genres=10749&without_genres=16" data-shape="slant">Row 20: Romance Stories</option>
+                                <option value="/discover/movie?with_genres=18&without_genres=16&sort_by=vote_average.desc&vote_count.gte=900" data-shape="portrait">Row 21: Acclaimed Drama</option>
+                                <option value="/discover/movie?with_origin_country=IN&without_genres=16" data-shape="leaf">Row 22: Indian Cinema Hits</option>
+                                <option value="/discover/movie?with_genres=99" data-shape="chamfer">Row 23: Documentaries</option>
+                            </select>
+                        </div>
+                        <div id="websiteSectionItemsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pt-2"></div>
+                    </div>
+
+                    <!-- Overrides Search & Filters Bar -->
+                    <div id="overridesFilterBar" class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
                         <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
                             <input id="contentSearchInput" type="text"
                                 placeholder="Search saved overrides by title or TMDB ID..."
@@ -1930,16 +1978,65 @@
             function buildSqlScript() {
                 const confUuid = (typeof SUPER_ADMIN_UUID !== 'undefined' ? SUPER_ADMIN_UUID : '').trim();
                 const sessionUid = AuthUI.getSession()?.user?.id;
-                const uid = confUuid || sessionUid || 'YOUR-SUPER-ADMIN-UUID';
+                const uid = confUuid || sessionUid || '540e9d75-3e05-48c9-bb5c-5dac0db4c3f0';
                 return `-- ============================================================================
--- FLIXORA ADMIN PANEL & MAIN SITE — FULL SUPABASE SCHEMA & RLS SETUP
+-- FLIXORA MOVIE ID FINDER — COMPLETE SUPABASE MIGRATION & SYNCHRONIZATION SCRIPT
+-- Project URL: https://comxecntwlntgvjbvkjs.supabase.co
+-- Super Admin UID: ${uid} (dj4550797@gmail.com)
+-- 
+-- Safe & Idempotent: Can be run multiple times without data loss or duplicate errors.
 -- Run this script in: Supabase Dashboard -> SQL Editor -> New Query -> Run
--- Idempotent & safe: will not overwrite existing tables or throw duplicate errors.
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 1. Hero Slides
+-- ----------------------------------------------------------------------------
+-- 1. REUSE & ENHANCE EXISTING TABLES
+-- ----------------------------------------------------------------------------
+
+-- A. movies table (Reuse existing table, safely add columns if needed)
+CREATE TABLE IF NOT EXISTS public.movies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  title text NOT NULL,
+  overview text DEFAULT '',
+  poster_path text DEFAULT '',
+  backdrop_path text DEFAULT '',
+  release_date text DEFAULT '',
+  rating numeric(3,1) DEFAULT 0,
+  tmdb_id integer,
+  media_type text DEFAULT 'movie'
+);
+
+-- Safely add any missing columns to existing movies table
+DO $$ BEGIN
+  ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'published';
+  ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS is_featured boolean NOT NULL DEFAULT false;
+  ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS display_order integer NOT NULL DEFAULT 0;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- B. site_settings table (Reuse existing key-value table)
+CREATE TABLE IF NOT EXISTS public.site_settings (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- C. audit_logs table (Reuse existing table)
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  action text NOT NULL,
+  metadata jsonb DEFAULT '{}'::jsonb
+);
+
+-- ----------------------------------------------------------------------------
+-- 2. CREATE FLIXORA ADMIN & CONTENT SYNCHRONIZATION TABLES
+-- ----------------------------------------------------------------------------
+
+-- A. Hero Slides (Hero Trailer & Featured Carousel)
 CREATE TABLE IF NOT EXISTS public.hero_slides (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tmdb_id integer,
@@ -1968,7 +2065,7 @@ CREATE TABLE IF NOT EXISTS public.hero_slides (
 );
 CREATE INDEX IF NOT EXISTS idx_hero_slides_order ON public.hero_slides (status, display_order);
 
--- 2. Content Overrides (Overrides TMDB on Main Site)
+-- B. Content Overrides (Overrides TMDB Metadata on Public Site)
 CREATE TABLE IF NOT EXISTS public.content_overrides (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tmdb_id integer NOT NULL,
@@ -1993,7 +2090,7 @@ CREATE TABLE IF NOT EXISTS public.content_overrides (
 );
 CREATE INDEX IF NOT EXISTS idx_content_vis ON public.content_overrides (visibility, content_type, display_order);
 
--- 3. Homepage Sections & Manual Items
+-- C. Homepage Sections (Dynamic Row Builder)
 CREATE TABLE IF NOT EXISTS public.homepage_sections (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   slug text UNIQUE NOT NULL,
@@ -2006,7 +2103,9 @@ CREATE TABLE IF NOT EXISTS public.homepage_sections (
   is_enabled boolean NOT NULL DEFAULT true,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS idx_homepage_sections_order ON public.homepage_sections (is_enabled, display_order);
 
+-- D. Homepage Section Items (Manual Curation Per Section)
 CREATE TABLE IF NOT EXISTS public.homepage_section_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   section_id uuid NOT NULL REFERENCES public.homepage_sections(id) ON DELETE CASCADE,
@@ -2016,28 +2115,28 @@ CREATE TABLE IF NOT EXISTS public.homepage_section_items (
   display_order integer NOT NULL DEFAULT 0
 );
 
--- 4. Intro & Animation Settings (singleton id = 1)
+-- E. Intro & Animation Settings (Singleton id = 1)
 CREATE TABLE IF NOT EXISTS public.intro_settings (
   id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   config jsonb NOT NULL DEFAULT '{}'::jsonb,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 5. Website Settings (singleton id = 1)
+-- F. Website Settings & SEO (Singleton id = 1)
 CREATE TABLE IF NOT EXISTS public.website_settings (
   id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   config jsonb NOT NULL DEFAULT '{}'::jsonb,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 6. Private Admin Settings (singleton id = 1)
+-- G. Private Admin Settings (Singleton id = 1)
 CREATE TABLE IF NOT EXISTS public.admin_settings (
   id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   config jsonb NOT NULL DEFAULT '{}'::jsonb,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 7. Analytics & Application Error Events
+-- H. Analytics & Error Telemetry Events
 CREATE TABLE IF NOT EXISTS public.analytics_events (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   event_type text NOT NULL,
@@ -2052,7 +2151,7 @@ CREATE TABLE IF NOT EXISTS public.analytics_events (
 );
 CREATE INDEX IF NOT EXISTS idx_analytics_created ON public.analytics_events (created_at DESC, event_type);
 
--- 8. Admin Activity Logs (Private)
+-- I. Admin Activity Audit Logs (Private)
 CREATE TABLE IF NOT EXISTS public.admin_activity_logs (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   admin_id uuid,
@@ -2066,14 +2165,21 @@ CREATE TABLE IF NOT EXISTS public.admin_activity_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_admin_logs_created ON public.admin_activity_logs (created_at DESC);
 
--- GRANTS
+-- ----------------------------------------------------------------------------
+-- 3. PERMISSIONS & ROLE GRANTS
+-- ----------------------------------------------------------------------------
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT SELECT ON public.hero_slides, public.content_overrides, public.homepage_sections, public.homepage_section_items, public.intro_settings, public.website_settings TO anon;
+GRANT SELECT ON public.movies, public.site_settings, public.hero_slides, public.content_overrides, public.homepage_sections, public.homepage_section_items, public.intro_settings, public.website_settings TO anon;
 GRANT INSERT ON public.analytics_events TO anon;
-GRANT ALL ON public.hero_slides, public.content_overrides, public.homepage_sections, public.homepage_section_items, public.intro_settings, public.website_settings, public.admin_settings, public.analytics_events, public.admin_activity_logs TO authenticated;
+GRANT ALL ON public.movies, public.site_settings, public.audit_logs, public.hero_slides, public.content_overrides, public.homepage_sections, public.homepage_section_items, public.intro_settings, public.website_settings, public.admin_settings, public.analytics_events, public.admin_activity_logs TO authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 
--- ENABLE RLS ON ALL TABLES
+-- ----------------------------------------------------------------------------
+-- 4. ROW LEVEL SECURITY (RLS) POLICIES
+-- ----------------------------------------------------------------------------
+ALTER TABLE public.movies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hero_slides ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.content_overrides ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.homepage_sections ENABLE ROW LEVEL SECURITY;
@@ -2084,7 +2190,13 @@ ALTER TABLE public.admin_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_activity_logs ENABLE ROW LEVEL SECURITY;
 
--- IDEMPOTENT PUBLIC READ POLICIES (PUBLISHED DATA ONLY)
+-- Public Read Policies (Published Data Only)
+DROP POLICY IF EXISTS "Public read movies" ON public.movies;
+CREATE POLICY "Public read movies" ON public.movies FOR SELECT TO anon, authenticated USING (status = 'published');
+
+DROP POLICY IF EXISTS "Public read site_settings" ON public.site_settings;
+CREATE POLICY "Public read site_settings" ON public.site_settings FOR SELECT TO anon, authenticated USING (true);
+
 DROP POLICY IF EXISTS "Public read published hero" ON public.hero_slides;
 CREATE POLICY "Public read published hero" ON public.hero_slides FOR SELECT TO anon, authenticated USING (status = 'published');
 
@@ -2106,7 +2218,16 @@ CREATE POLICY "Public read site settings" ON public.website_settings FOR SELECT 
 DROP POLICY IF EXISTS "Public log validated events" ON public.analytics_events;
 CREATE POLICY "Public log validated events" ON public.analytics_events FOR INSERT TO anon, authenticated WITH CHECK (event_type IN ('page_view','search','detail_open','hero_interact','trailer_play','trailer_error','nav_click','js_error','api_error','load_error'));
 
--- IDEMPOTENT SUPER ADMIN POLICIES (STRICTLY LOCKED TO SUPER ADMIN UUID: ${uid})
+-- Super Admin Policies (Strictly Locked to Super Admin UID: ${uid})
+DROP POLICY IF EXISTS "Admin all movies" ON public.movies;
+CREATE POLICY "Admin all movies" ON public.movies FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
+
+DROP POLICY IF EXISTS "Admin all site_settings" ON public.site_settings;
+CREATE POLICY "Admin all site_settings" ON public.site_settings FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
+
+DROP POLICY IF EXISTS "Admin all audit_logs" ON public.audit_logs;
+CREATE POLICY "Admin all audit_logs" ON public.audit_logs FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
+
 DROP POLICY IF EXISTS "Admin all hero" ON public.hero_slides;
 CREATE POLICY "Admin all hero" ON public.hero_slides FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
@@ -2134,12 +2255,121 @@ CREATE POLICY "Admin read analytics" ON public.analytics_events FOR SELECT TO au
 DROP POLICY IF EXISTS "Admin all logs" ON public.admin_activity_logs;
 CREATE POLICY "Admin all logs" ON public.admin_activity_logs FOR ALL TO authenticated USING (auth.uid() = '${uid}'::uuid) WITH CHECK (auth.uid() = '${uid}'::uuid);
 
--- STORAGE BUCKET FOR ASSETS (WRITE ACCESS RESTRICTED TO SUPER ADMIN UUID)
-INSERT INTO storage.buckets (id, name, public) VALUES ('flixora-assets', 'flixora-assets', true) ON CONFLICT (id) DO UPDATE SET public = true;
+-- ----------------------------------------------------------------------------
+-- 5. STORAGE BUCKET CONFIGURATION
+-- ----------------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('flixora-assets', 'flixora-assets', true) 
+ON CONFLICT (id) DO UPDATE SET public = true;
+
 DROP POLICY IF EXISTS "Public read flixora assets" ON storage.objects;
-CREATE POLICY "Public read flixora assets" ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id = 'flixora-assets');
+CREATE POLICY "Public read flixora assets" ON storage.objects FOR SELECT TO anon, authenticated 
+USING (bucket_id = 'flixora-assets');
+
 DROP POLICY IF EXISTS "Admin write flixora assets" ON storage.objects;
-CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authenticated USING (bucket_id = 'flixora-assets' AND auth.uid() = '${uid}'::uuid) WITH CHECK (bucket_id = 'flixora-assets' AND auth.uid() = '${uid}'::uuid);`;
+CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authenticated 
+USING (bucket_id = 'flixora-assets' AND auth.uid() = '${uid}'::uuid) 
+WITH CHECK (bucket_id = 'flixora-assets' AND auth.uid() = '${uid}'::uuid);
+
+-- ----------------------------------------------------------------------------
+-- 6. PRE-SEED EXISTING WEBSITE DATA (HOMEPAGE SECTIONS, SETTINGS, INTRO)
+-- ----------------------------------------------------------------------------
+
+-- Seed All 23 Existing Homepage Sections from index.html (HOME_R)
+INSERT INTO public.homepage_sections (slug, title, source_type, tmdb_endpoint, card_shape, item_limit, display_order, is_enabled)
+VALUES
+  ('global_top_10', 'Global Top 10 Trending', 'tmdb_trending', '/trending/all/day', 'rank', 10, 1, true),
+  ('recommended_movies', 'Recommended For You', 'tmdb_movie', '/trending/movie/week', 'wide', 12, 2, true),
+  ('indian_tv_shows', 'Indian TV Shows & Web Series', 'tmdb_indian_tv', '/discover/tv?with_origin_country=IN&without_genres=16&sort_by=popularity.desc', 'wide', 12, 3, true),
+  ('because_you_watched_cinema', 'Because You Watched Cinema', 'tmdb_movie', '/discover/movie?without_genres=16&sort_by=vote_average.desc&vote_count.gte=1200', 'slant', 12, 4, true),
+  ('popular_blockbusters', 'Popular Blockbusters', 'tmdb_movie', '/discover/movie?without_genres=16&sort_by=popularity.desc', 'portrait', 14, 5, true),
+  ('upcoming_releases', 'Upcoming Releases', 'tmdb_movie', '/movie/upcoming', 'leaf', 12, 6, true),
+  ('now_playing_theatres', 'Now Playing Theatres', 'tmdb_movie', '/movie/now_playing', 'chamfer', 12, 7, true),
+  ('popular_web_series', 'Popular Web Series', 'tmdb_tv', '/discover/tv?without_genres=16&without_original_language=ko&sort_by=popularity.desc', 'arch', 12, 8, true),
+  ('top_rated_tv_series', 'Top Rated TV Series', 'tmdb_tv', '/discover/tv?without_genres=16&without_original_language=ko&sort_by=vote_average.desc&vote_count.gte=400', 'wide', 12, 9, true),
+  ('top_rated_anime', 'Top Rated Anime', 'tmdb_anime', '/discover/tv?with_genres=16&with_original_language=ja&sort_by=vote_average.desc&vote_count.gte=300', 'chamfer', 12, 10, true),
+  ('popular_anime_movies', 'Popular Anime Movies', 'tmdb_anime', '/discover/movie?with_genres=16&with_original_language=ja&sort_by=popularity.desc', 'slant', 12, 11, true),
+  ('trending_kdramas', 'Trending K-Dramas', 'tmdb_kdrama', '/discover/tv?with_original_language=ko&sort_by=popularity.desc', 'wide', 12, 12, true),
+  ('top_kdramas', 'Top K-Dramas', 'tmdb_kdrama', '/discover/tv?with_original_language=ko&sort_by=vote_average.desc&vote_count.gte=150', 'portrait', 12, 13, true),
+  ('action_adventure', 'Action & Adventure', 'tmdb_movie', '/discover/movie?with_genres=28,12&without_genres=16', 'slant', 12, 14, true),
+  ('scifi_mind_bending', 'Sci-Fi & Mind-Bending', 'tmdb_movie', '/discover/movie?with_genres=878&without_genres=16', 'chamfer', 12, 15, true),
+  ('horror_supernatural', 'Horror & Supernatural', 'tmdb_movie', '/discover/movie?with_genres=27&without_genres=16', 'portrait', 12, 16, true),
+  ('dark_thrillers', 'Dark Thrillers', 'tmdb_movie', '/discover/movie?with_genres=53&without_genres=16', 'arch', 12, 17, true),
+  ('comedy_feel_good', 'Comedy & Feel-Good', 'tmdb_movie', '/discover/movie?with_genres=35&without_genres=16', 'leaf', 12, 18, true),
+  ('crime_mystery', 'Crime & Mystery', 'tmdb_movie', '/discover/movie?with_genres=80,9648&without_genres=16', 'wide', 12, 19, true),
+  ('romance_stories', 'Romance Stories', 'tmdb_movie', '/discover/movie?with_genres=10749&without_genres=16', 'slant', 12, 20, true),
+  ('acclaimed_drama', 'Acclaimed Drama', 'tmdb_movie', '/discover/movie?with_genres=18&without_genres=16&sort_by=vote_average.desc&vote_count.gte=900', 'portrait', 12, 21, true),
+  ('indian_cinema_hits', 'Indian Cinema Hits', 'tmdb_movie', '/discover/movie?with_origin_country=IN&without_genres=16', 'leaf', 12, 22, true),
+  ('documentaries', 'Documentaries', 'tmdb_movie', '/discover/movie?with_genres=99', 'chamfer', 12, 23, true)
+ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  source_type = EXCLUDED.source_type,
+  tmdb_endpoint = EXCLUDED.tmdb_endpoint,
+  card_shape = EXCLUDED.card_shape,
+  item_limit = EXCLUDED.item_limit,
+  display_order = EXCLUDED.display_order;
+
+-- Seed Default Website Settings Matching index.html
+INSERT INTO public.website_settings (id, config)
+VALUES (
+  1,
+  jsonb_build_object(
+    'site_title', 'Flixora — Movie ID Finder',
+    'logo_url', 'https://i.ibb.co/8DW8gwrD/72d018c7c0e6909c13158fe402b62a9f2c2ddb8ae70b8a4fb0e2844e1ba4671c.png',
+    'favicon_url', 'https://i.ibb.co/8DW8gwrD/72d018c7c0e6909c13158fe402b62a9f2c2ddb8ae70b8a4fb0e2844e1ba4671c.png',
+    'fallback_image_url', '',
+    'brand_description', 'High-performance cinema discovery and movie ID search engine with cinematic intro animations and video trailer immersion.',
+    'footer_text', '© 2026 Flixora. Powered by Supabase & TMDB API.',
+    'default_language', 'en',
+    'maintenance_mode', false,
+    'announcement_enabled', false,
+    'announcement_text', '',
+    'allow_indexing', true,
+    'search', jsonb_build_object(
+      'enabled', true,
+      'placeholder', 'Search all movies, series, anime...',
+      'limit', 24,
+      'behavior', 'instant_debounced',
+      'suggestions_enabled', true,
+      'curated_terms', jsonb_build_array('Interstellar', 'Attack on Titan', 'Oppenheimer', 'Breaking Bad', 'Demon Slayer')
+    )
+  )
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Default Intro & Animation Settings Matching index.html
+INSERT INTO public.intro_settings (id, config)
+VALUES (
+  1,
+  jsonb_build_object(
+    'enabled', true,
+    'skip_button', true,
+    'desktop_enabled', true,
+    'mobile_enabled', true,
+    'session_policy', 'every_visit',
+    'reduced_motion', 'simplified',
+    'emergency_timeout_ms', 12000,
+    'stage1_enabled', true,
+    'stage1_logo', 'https://i.ibb.co/wNkMGsms/IMG-80fb3083-ba3a-431a-88de-587a8ba7e963.jpg',
+    'stage1_duration_ms', 1280,
+    'stage1_text', true,
+    'stage2_enabled', true,
+    'stage2_logo', 'https://i.ibb.co/8DW8gwrD/72d018c7c0e6909c13158fe402b62a9f2c2ddb8ae70b8a4fb0e2844e1ba4671c.png',
+    'stage2_duration_ms', 1800,
+    'stage2_powered_by', true,
+    'stage3_enabled', true,
+    'stage3_logo', 'https://i.ibb.co/8DW8gwrD/72d018c7c0e6909c13158fe402b62a9f2c2ddb8ae70b8a4fb0e2844e1ba4671c.png',
+    'stage3_status', 'Initializing Flixora',
+    'stage3_bar', true,
+    'stage4_enabled', true,
+    'stage4_desktop_cursors', 6,
+    'stage4_mobile_cursors', 4,
+    'stage4_speed', 1.0,
+    'stage4_fx', true
+  )
+)
+ON CONFLICT (id) DO NOTHING;
+`;
             }
 
             function openSqlModal() {
@@ -2534,19 +2764,40 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
             let pg = 0;
             let rows = [];
             let selected = new Set();
+            let currentTab = 'overrides'; // 'overrides' | 'website'
+            let existingOverridesMap = new Map();
 
             let debTmr;
-            $('contentSearchInput').addEventListener('input', () => {
+            $('contentSearchInput')?.addEventListener('input', () => {
                 clearTimeout(debTmr);
                 debTmr = setTimeout(() => { pg = 0; reload(); }, 320);
             });
 
-            async function reload() {
-                const q = $('contentSearchInput').value.trim();
-                const type = $('contentTypeFilter').value;
-                const vis = $('contentVisFilter').value;
-                const sort = $('contentSortBy').value;
+            function switchTab(t) {
+                currentTab = t;
+                const isOver = t === 'overrides';
+                $('tabModeOverrides').className = `${isOver ? 'fx-btn-primary' : 'fx-btn-ghost'} px-3.5 py-1.5 text-xs font-bold`;
+                $('tabModeWebsite').className = `${!isOver ? 'fx-btn-primary' : 'fx-btn-ghost'} px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5`;
+                $('overridesFilterBar').classList.toggle('hidden', !isOver);
+                $('contentListWrap').classList.toggle('hidden', !isOver);
+                const pageBar = $('contentPageInfo')?.parentElement;
+                if (pageBar) pageBar.classList.toggle('hidden', !isOver);
+                $('websiteBrowserPanel').classList.toggle('hidden', isOver);
 
+                if (isOver) {
+                    reload();
+                } else {
+                    loadWebsiteSectionContent();
+                }
+            }
+
+            async function reload() {
+                const q = $('contentSearchInput')?.value.trim() || '';
+                const type = $('contentTypeFilter')?.value || 'all';
+                const vis = $('contentVisFilter')?.value || 'all';
+                const sort = $('contentSortBy')?.value || 'display_order';
+
+                // Try content_overrides primary
                 let query = sb.from('content_overrides').select('*', { count: 'exact' });
                 if (type !== 'all') query = query.eq('content_type', type);
                 if (vis !== 'all') query = query.eq('visibility', vis);
@@ -2557,13 +2808,27 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
                 query = query.order(sort, { ascending: sort === 'display_order' }).range(pg * PAGE_SIZE, (pg + 1) * PAGE_SIZE - 1);
 
                 const { data, count, error } = await query;
-                if (error) AdminApp.noteQueryError('content_overrides', error);
-                rows = data || [];
+                if (error) {
+                    AdminApp.noteQueryError('content_overrides', error);
+                    // Fallback to movies table if content_overrides not yet created
+                    const { data: mvData, count: mvCount } = await sb.from('movies').select('*', { count: 'exact' }).range(pg * PAGE_SIZE, (pg + 1) * PAGE_SIZE - 1);
+                    rows = (mvData || []).map(m => ({ ...m, content_type: m.media_type || 'movie', visibility: m.status || 'published' }));
+                } else {
+                    rows = data || [];
+                }
+
+                // Update overrides map for instant cross-referencing
+                existingOverridesMap.clear();
+                rows.forEach(r => {
+                    if (r.tmdb_id) existingOverridesMap.set(String(r.tmdb_id), r);
+                });
+
                 selected.clear();
                 updateBulkBar();
 
-                const maxPage = Math.max(1, Math.ceil((count || 0) / PAGE_SIZE));
-                $('contentPageInfo').textContent = `Page ${pg + 1} of ${maxPage} (${count || 0} records)`;
+                const totalRecords = count || rows.length;
+                const maxPage = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+                $('contentPageInfo').textContent = `Page ${pg + 1} of ${maxPage} (${totalRecords} records)`;
                 $('contentPrevBtn').disabled = pg <= 0;
                 $('contentNextBtn').disabled = pg + 1 >= maxPage;
                 render();
@@ -2574,7 +2839,10 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
             function render() {
                 const wrap = $('contentListWrap');
                 if (!rows.length) {
-                    wrap.innerHTML = `<div class="glass-panel rounded-2xl p-8 text-center text-xs text-zinc-400">No content overrides found. Use "+ Import / Add Content" to import from TMDB and manage featured/custom titles.</div>`;
+                    wrap.innerHTML = `<div class="glass-panel rounded-2xl p-8 text-center text-xs text-zinc-400">
+                        <p class="font-bold text-zinc-300">No content overrides saved in Supabase yet.</p>
+                        <p class="mt-1">Click <strong>"Browse Live Website Rows"</strong> to customize any title currently streaming on the homepage, or <strong>"+ Import / Add Content"</strong> to add a custom title.</p>
+                    </div>`;
                     return;
                 }
                 wrap.innerHTML = rows.map(r => `
@@ -2584,7 +2852,7 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
           <img src="${esc(r.poster_path?.startsWith('http') ? safeUrl(r.poster_path) : (r.poster_path ? TMDB_IMG + r.poster_path : ''))}" alt="" class="w-11 h-16 rounded-lg object-cover bg-zinc-900 shrink-0">
           <div class="min-w-0">
             <p class="font-bold text-sm truncate">${esc(r.title)}</p>
-            <p class="text-[11px] text-zinc-400">TMDB #${r.tmdb_id} • ${esc(r.content_type)} • ★ ${r.rating ?? 'N/A'} • ${esc(r.language)}</p>
+            <p class="text-[11px] text-zinc-400">TMDB #${r.tmdb_id} • ${esc(r.content_type)} • ★ ${r.rating ?? 'N/A'} • ${esc(r.language || 'en')}</p>
             <div class="flex flex-wrap gap-1 mt-1 text-[10px]">
               <span class="px-2 py-0.5 rounded-full ${r.visibility === 'published' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-200'}">${esc(r.visibility)}</span>
               ${r.is_featured ? '<span class="px-2 py-0.5 rounded-full bg-aiCyan/15 text-aiCyan">Featured</span>' : ''}
@@ -2598,6 +2866,86 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
         </div>
       </div>
     `).join('');
+            }
+
+            // Browse live content streaming on index.html
+            async function loadWebsiteSectionContent() {
+                const ep = $('webSectionSelect')?.value || '/trending/all/day';
+                const grid = $('websiteSectionItemsGrid');
+                if (!grid) return;
+                grid.innerHTML = '<div class="col-span-full py-8 text-center text-xs text-zinc-400"><svg class="animate-spin w-5 h-5 mx-auto mb-2 text-aiCyan" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>Loading live website content from TMDB...</div>';
+
+                try {
+                    // Pre-fetch all overrides to check status
+                    const { data: ovs } = await sb.from('content_overrides').select('*');
+                    const ovMap = new Map();
+                    (ovs || []).forEach(o => ovMap.set(String(o.tmdb_id), o));
+
+                    const res = await TmdbClient.request(ep);
+                    const items = (res?.results || []).slice(0, 16);
+                    if (!items.length) {
+                        grid.innerHTML = '<div class="col-span-full p-6 text-center text-xs text-zinc-400">No items returned for this section.</div>';
+                        return;
+                    }
+
+                    grid.innerHTML = items.map(it => {
+                        const existingOv = ovMap.get(String(it.id));
+                        const isOverridden = Boolean(existingOv);
+                        const mediaType = it.media_type || (ep.includes('/tv') ? 'tv' : 'movie');
+                        const title = existingOv?.title || it.title || it.name || 'Untitled';
+                        const poster = existingOv?.poster_path || it.poster_path;
+                        const posterUrl = poster?.startsWith('http') ? poster : (poster ? TMDB_IMG + poster : '');
+
+                        return `
+                        <div class="glass-panel rounded-xl overflow-hidden flex flex-col justify-between border ${isOverridden ? 'border-aiCyan/40 bg-aiCyan/5' : 'border-white/10'}">
+                            <div class="h-32 bg-cover bg-center relative" style="background-image:url('${esc(posterUrl)}')">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                                <div class="absolute top-2 left-2 flex gap-1">
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${isOverridden ? 'bg-aiCyan text-black' : 'bg-black/75 text-zinc-300'}">
+                                        ${isOverridden ? 'OVERRIDDEN' : 'TMDB LIVE'}
+                                    </span>
+                                </div>
+                                <div class="absolute bottom-2 left-2 right-2 flex justify-between items-center text-[10px]">
+                                    <span class="font-bold text-aiCyan">★ ${it.vote_average ? Number(it.vote_average).toFixed(1) : 'N/A'}</span>
+                                    <span class="font-mono text-zinc-400">ID: ${it.id}</span>
+                                </div>
+                            </div>
+                            <div class="p-3 space-y-2 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <h5 class="font-bold text-xs truncate">${esc(title)}</h5>
+                                    <p class="text-[10px] text-zinc-400 line-clamp-2 mt-0.5">${esc(existingOv?.overview || it.overview || 'No storyline available.')}</p>
+                                </div>
+                                <div class="pt-2 border-t border-white/10 flex items-center justify-between">
+                                    <span class="text-[10px] text-zinc-400 uppercase">${esc(mediaType)}</span>
+                                    <button onclick="ContentMgr.prefillFromLiveItem(${it.id}, '${esc(mediaType)}')" class="${isOverridden ? 'fx-btn-primary' : 'fx-btn-ghost'} px-2.5 py-1 text-[11px] font-semibold">
+                                        ${isOverridden ? 'Edit Override' : '+ Override Title'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                } catch (err) {
+                    grid.innerHTML = `<div class="col-span-full p-6 text-center text-xs text-amber-300">Failed to stream live section items: ${esc(err.message)}</div>`;
+                }
+            }
+
+            // Pre-fill editor from live item
+            async function prefillFromLiveItem(id, kind) {
+                try {
+                    // Check if already in Supabase
+                    const { data: existing } = await sb.from('content_overrides').select('*').eq('tmdb_id', id).maybeSingle();
+                    if (existing) {
+                        openEditor(existing.id);
+                        return;
+                    }
+                    // Fetch full metadata from TMDB
+                    const d = await TmdbClient.request(`/${kind}/${id}`);
+                    openEditor();
+                    fillFromTmdb(d, kind);
+                    toast(`Pre-filled "${d.title || d.name}" ready to customize!`);
+                } catch (err) {
+                    toast(err.message, true);
+                }
             }
 
             function toggleSelect(id, on) {
@@ -2733,11 +3081,34 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
                 await withLock($('cm_save_btn'), async () => {
                     const q = id ? sb.from('content_overrides').update(payload).eq('id', id) : sb.from('content_overrides').upsert(payload, { onConflict: 'tmdb_id,content_type' });
                     const { error } = await q;
-                    if (error) { AdminApp.noteQueryError('content_overrides', error); toast(error.message, true); return; }
+
+                    if (error) {
+                        AdminApp.noteQueryError('content_overrides', error);
+                        // Also try saving to movies table
+                        const moviePayload = {
+                            title: payload.title,
+                            overview: payload.overview,
+                            poster_path: payload.poster_path,
+                            backdrop_path: payload.backdrop_path,
+                            release_date: payload.release_date,
+                            rating: payload.rating,
+                            tmdb_id: payload.tmdb_id,
+                            media_type: payload.content_type,
+                            status: payload.visibility,
+                            updated_at: payload.updated_at
+                        };
+                        const { error: mvErr } = await sb.from('movies').upsert(moviePayload, { onConflict: 'tmdb_id' });
+                        if (mvErr) {
+                            toast(error.message, true);
+                            return;
+                        }
+                    }
+
                     await AdminApp.logActivity(sess, id ? 'update' : 'create', 'content_overrides', payload.tmdb_id, `Saved "${payload.title}" (${payload.visibility})`);
-                    toast('Content override saved!');
+                    toast('Content override saved to Supabase!');
                     closeEditor();
-                    reload();
+                    if (currentTab === 'overrides') reload();
+                    else loadWebsiteSectionContent();
                 });
             });
 
@@ -2753,7 +3124,7 @@ CREATE POLICY "Admin write flixora assets" ON storage.objects FOR ALL TO authent
                 reload();
             }
 
-            return { reload, stepPage, toggleSelect, bulkStatus, bulkDelete, openEditor, closeEditor, importTmdb, pickSearchItem, removeOne };
+            return { reload, stepPage, toggleSelect, bulkStatus, bulkDelete, openEditor, closeEditor, importTmdb, pickSearchItem, removeOne, switchTab, loadWebsiteSectionContent, prefillFromLiveItem };
         })();
 
         /* ==========================================================================

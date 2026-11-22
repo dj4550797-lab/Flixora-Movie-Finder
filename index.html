@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://www.youtube.com">
 <link rel="preconnect" href="https://i.ytimg.com">
 <link rel="preconnect" href="https://www.google.com">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
@@ -656,6 +657,22 @@ body.swarm-building .animate-pulse {
 <!-- ========================================================================
      FLIXORA MOVIE ID FINDER APPLICATION STRUCTURE
      ======================================================================== -->
+<!-- Announcement Bar (Managed via Admin) -->
+<div id="fxAnnouncementBar" class="hidden bg-gradient-to-r from-aiCyan/20 via-aiBlue/20 to-aiCyan/20 border-b border-aiCyan/30 text-aiCyan text-center py-2 px-4 text-xs font-semibold tracking-wide flex items-center justify-center gap-2"></div>
+<!-- Maintenance Screen (Managed via Admin) -->
+<div id="fxMaintenanceView" class="hidden fixed inset-0 z-[999] bg-[#07090f] flex flex-col items-center justify-center p-6 text-center">
+  <div class="max-w-md w-full liquid-glass rounded-3xl p-8 border border-white/15 space-y-4 shadow-2xl">
+    <div class="w-16 h-16 rounded-2xl bg-aiCyan/15 border border-aiCyan/40 mx-auto flex items-center justify-center text-aiCyan shadow-[0_0_20px_rgba(0,242,254,0.3)]">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+    </div>
+    <h2 class="text-2xl font-black text-white" id="fxMaintenanceTitle">Maintenance In Progress</h2>
+    <p class="text-xs text-zinc-300 leading-relaxed" id="fxMaintenanceMsg">Flixora is currently undergoing scheduled maintenance. Please check back shortly.</p>
+    <div class="pt-4 border-t border-white/10 flex items-center justify-center gap-3">
+      <a href="./admin.html" class="bg-gradient-to-r from-aiCyan to-aiBlue text-black font-black px-6 py-2.5 rounded-full text-xs shadow-lg hover:scale-105 transition cursor-pointer">Super Admin Login</a>
+      <button onclick="window.location.reload()" class="px-4 py-2 text-xs font-semibold text-zinc-300 hover:text-white">Refresh</button>
+    </div>
+  </div>
+</div>
 <header id="mainHeader" class="sticky top-0 inset-x-0 z-50 site-header px-4 py-3 sm:px-8 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h1 id="headerBrand" class="text-transparent bg-clip-text bg-gradient-to-r from-aiCyan to-aiBlue text-2xl sm:text-3xl font-black tracking-tighter cursor-pointer" onclick="openPage('home')">FLIXORA<span class="text-white text-[11px] tracking-widest ml-1 uppercase font-medium">ID Finder</span></h1>
@@ -666,6 +683,7 @@ body.swarm-building .animate-pulse {
       <button data-page="indiantv" onclick="openPage('indiantv')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">Indian TV</button>
       <button data-page="anime" onclick="openPage('anime')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">Anime</button>
       <button data-page="kdrama" onclick="openPage('kdrama')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">K-Drama</button>
+      <a href="./admin.html" title="Super Admin Studio" class="liquid-pill px-3 py-1.5 rounded-full text-xs font-bold text-aiCyan hover:border-aiCyan whitespace-nowrap cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,242,254,0.15)]"><svg class="w-3.5 h-3.5 text-aiCyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span>Admin</span></a>
     </nav>
   </div>
   <div id="headerSearchWrap" class="relative w-full lg:w-[400px]">
@@ -779,10 +797,346 @@ body.swarm-building .animate-pulse {
 /* ==========================================================================
    8. USER-PROVIDED ASSET CONFIGURATION (EASILY REPLACEABLE)
    ========================================================================== */
-const FLIXORA_ASSETS = Object.freeze({
+let FLIXORA_ASSETS = {
   movieIdFinderLogo: 'https://i.ibb.co/wNkMGsms/IMG-80fb3083-ba3a-431a-88de-587a8ba7e963.jpg',
   flixoraLogo: 'https://i.ibb.co/8DW8gwrD/72d018c7c0e6909c13158fe402b62a9f2c2ddb8ae70b8a4fb0e2844e1ba4671c.png'
-});
+};
+
+/* ==========================================================================
+   8B. SUPABASE INTEGRATION & REAL-TIME CONTENT PIPELINE
+   ========================================================================== */
+const FlixoraSupabase = (() => {
+  const SUPABASE_URL = 'https://comxecntwlntgvjbvkjs.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable__5xCvJeJren5zsyR33SkJQ_fYwAZIbX';
+
+  let sb = null;
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+    }
+  } catch (err) {
+    console.warn('[Flixora Supabase] Init error:', err.message);
+  }
+
+  // Session ID for analytics
+  let sessionHash = '';
+  try {
+    sessionHash = sessionStorage.getItem('fx_session_id');
+    if (!sessionHash) {
+      sessionHash = 'fx_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      sessionStorage.setItem('fx_session_id', sessionHash);
+    }
+  } catch {
+    sessionHash = 'fx_anon_' + Date.now();
+  }
+
+  // In-memory canonical published data state
+  const state = {
+    websiteSettings: {},
+    introSettings: {},
+    heroSlides: [],
+    contentOverrides: new Map(),
+    homepageSections: [],
+    initialized: false,
+    realtimeActive: false
+  };
+
+  // Safe Analytics Logger (never blocks UI)
+  async function logEvent(eventType, meta = {}) {
+    if (!sb) return;
+    try {
+      const payload = {
+        event_type: eventType,
+        session_hash: sessionHash,
+        page: meta.page || page || 'home',
+        category: meta.category || '',
+        search_query: meta.search_query || '',
+        tmdb_id: meta.tmdb_id || null,
+        title: meta.title || '',
+        metadata: meta.metadata || {},
+        created_at: new Date().toISOString()
+      };
+      await sb.from('analytics_events').insert(payload);
+    } catch {
+      // Non-critical telemetry, silently absorb
+    }
+  }
+
+  // Load published Website Settings
+  async function syncWebsiteSettings() {
+    if (!sb) return;
+    try {
+      const { data, error } = await sb.from('website_settings').select('config').eq('id', 1).maybeSingle();
+      let c = data?.config;
+      if (!c) {
+        // Fallback to site_settings table if website_settings not populated
+        const { data: ssData } = await sb.from('site_settings').select('value').eq('key', 'website_config').maybeSingle();
+        if (ssData?.value) c = ssData.value;
+      }
+      if (!c) return;
+      state.websiteSettings = c;
+
+      // Maintenance Mode Check
+      const isBypass = location.search.includes('preview=true') || location.hash.includes('admin') || location.search.includes('bypass=true');
+      if (c.maintenance_mode && !isBypass) {
+        const mBox = $('fxMaintenanceView');
+        if (mBox) {
+          if (c.brand_description) $('fxMaintenanceMsg').textContent = c.brand_description;
+          mBox.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+          return;
+        }
+      } else {
+        const mBox = $('fxMaintenanceView');
+        if (mBox) mBox.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+
+      // Title & Branding
+      if (c.site_title) document.title = c.site_title;
+      if (c.favicon_url) {
+        let fav = document.querySelector('link[rel="icon"]');
+        if (!fav) { fav = document.createElement('link'); fav.rel = 'icon'; document.head.appendChild(fav); }
+        fav.href = c.favicon_url;
+      }
+      if (c.logo_url) {
+        FLIXORA_ASSETS.flixoraLogo = c.logo_url;
+      }
+
+      // Announcement Bar
+      const bar = $('fxAnnouncementBar');
+      if (bar) {
+        if (c.announcement_enabled && c.announcement_text) {
+          bar.innerHTML = '<span>⚡ ' + esc(c.announcement_text) + '</span>';
+          bar.classList.remove('hidden');
+        } else {
+          bar.classList.add('hidden');
+        }
+      }
+    } catch (err) {
+      console.warn('[Flixora Supabase] Settings sync error:', err.message);
+    }
+  }
+
+  // Load published Intro & Animation Settings
+  async function syncIntroSettings() {
+    if (!sb) return;
+    try {
+      const { data, error } = await sb.from('intro_settings').select('config').eq('id', 1).maybeSingle();
+      if (error || !data?.config) return;
+      state.introSettings = data.config;
+      const ic = data.config;
+
+      if (ic.stage1_logo) FLIXORA_ASSETS.movieIdFinderLogo = ic.stage1_logo;
+      if (ic.stage2_logo) FLIXORA_ASSETS.flixoraLogo = ic.stage2_logo;
+      if (ic.skip_button === false) {
+        const skipBtn = $('introSkipBtn');
+        if (skipBtn) skipBtn.style.display = 'none';
+      }
+    } catch (err) {
+      console.warn('[Flixora Supabase] Intro sync error:', err.message);
+    }
+  }
+
+  // Load published Hero Slides (Admin-controlled Hero Carousel)
+  async function syncHeroSlides() {
+    if (!sb) return;
+    try {
+      const { data, error } = await sb.from('hero_slides')
+        .select('*')
+        .eq('status', 'published')
+        .order('display_order', { ascending: true });
+      if (error || !data || !data.length) return;
+
+      const customSlides = data.map((s, idx) => ({
+        id: s.tmdb_id || 999900 + (s.display_order || idx + 1),
+        title: s.title,
+        name: s.title,
+        overview: s.description || '',
+        backdrop_path: s.backdrop_url || s.poster_url || '',
+        poster_path: s.poster_url || s.backdrop_url || '',
+        media_type: s.media_type || 'movie',
+        _keys: s.trailer_youtube_id ? [s.trailer_youtube_id] : [],
+        _custom: true,
+        _duration: s.slide_duration_sec || 12,
+        _height: s.height_preset || 'standard',
+        _textPos: s.text_position || 'bottom-left'
+      }));
+
+      state.heroSlides = customSlides;
+      console.log('[Flixora Supabase] Synchronized', customSlides.length, 'published hero slide(s).');
+    } catch (err) {
+      console.warn('[Flixora Supabase] Hero slides sync error:', err.message);
+    }
+  }
+
+  // Load published Content Overrides (Admin Movie/Series customizations)
+  async function syncContentOverrides() {
+    if (!sb) return;
+    try {
+      // 1. Primary source: content_overrides
+      const { data, error } = await sb.from('content_overrides')
+        .select('*')
+        .eq('visibility', 'published');
+
+      state.contentOverrides.clear();
+
+      if (data && data.length) {
+        data.forEach(item => {
+          if (item.tmdb_id) {
+            state.contentOverrides.set(String(item.tmdb_id), item);
+            if (item.content_type) {
+              state.contentOverrides.set(item.tmdb_id + '_' + item.content_type, item);
+            }
+          }
+        });
+      }
+
+      // 2. Secondary source: movies table (if populated and not conflicting)
+      const { data: movieRows } = await sb.from('movies')
+        .select('*')
+        .eq('status', 'published');
+
+      if (movieRows && movieRows.length) {
+        movieRows.forEach(m => {
+          if (m.tmdb_id && !state.contentOverrides.has(String(m.tmdb_id))) {
+            state.contentOverrides.set(String(m.tmdb_id), m);
+          }
+        });
+      }
+
+      console.log('[Flixora Supabase] Synchronized', state.contentOverrides.size, 'published content override(s).');
+    } catch (err) {
+      console.warn('[Flixora Supabase] Overrides sync error:', err.message);
+    }
+  }
+
+  // Load published Homepage Sections
+  async function syncHomepageSections() {
+    if (!sb) return;
+    try {
+      const { data, error } = await sb.from('homepage_sections')
+        .select('*')
+        .eq('is_enabled', true)
+        .order('display_order', { ascending: true });
+      if (error || !data || !data.length) return;
+      state.homepageSections = data;
+      console.log('[Flixora Supabase] Synchronized', data.length, 'custom homepage section(s).');
+    } catch (err) {
+      console.warn('[Flixora Supabase] Homepage sections sync error:', err.message);
+    }
+  }
+
+  // Setup Supabase Realtime channel subscription
+  function setupRealtime() {
+    if (!sb || typeof sb.channel !== 'function' || state.realtimeActive) return;
+    try {
+      state.realtimeActive = true;
+      const ch = sb.channel('flixora-website-sync');
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: 'website_settings' }, async () => {
+        console.log('[Realtime] Website settings updated.');
+        await syncWebsiteSettings();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intro_settings' }, async () => {
+        console.log('[Realtime] Intro settings updated.');
+        await syncIntroSettings();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hero_slides' }, async () => {
+        console.log('[Realtime] Hero slides updated.');
+        await syncHeroSlides();
+        if (page === 'home' && state.heroSlides.length) {
+          slides = [...state.heroSlides, ...homeTop.slice(0, Math.max(0, 10 - state.heroSlides.length))];
+          showSlide(hIdx % slides.length);
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_overrides' }, async () => {
+        console.log('[Realtime] Content overrides updated.');
+        await syncContentOverrides();
+        if (page === 'home') renderHome();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_sections' }, async () => {
+        console.log('[Realtime] Homepage sections updated.');
+        await syncHomepageSections();
+        if (page === 'home') renderHome();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Flixora Supabase] Realtime synchronization online.');
+        }
+      });
+    } catch (err) {
+      console.warn('[Flixora Realtime] Subscription error:', err.message);
+    }
+  }
+
+  // Revalidate on tab focus
+  async function revalidate() {
+    await Promise.allSettled([
+      syncWebsiteSettings(),
+      syncIntroSettings(),
+      syncHeroSlides(),
+      syncContentOverrides(),
+      syncHomepageSections()
+    ]);
+  }
+
+  // Master Init
+  async function init() {
+    if (state.initialized) return;
+    state.initialized = true;
+
+    // Run parallel syncs non-blockingly
+    await Promise.allSettled([
+      syncWebsiteSettings(),
+      syncIntroSettings(),
+      syncHeroSlides(),
+      syncContentOverrides(),
+      syncHomepageSections()
+    ]);
+
+    setupRealtime();
+
+    // Revalidate when user tabs back from Admin
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) revalidate();
+    });
+
+    logEvent('page_view', { page: 'home', title: 'Flixora Movie ID Finder' });
+  }
+
+  function applyOverride(it, tp) {
+    if (!it || !it.id) return it;
+    const key = it.id + '_' + (tp || it.media_type || 'movie');
+    const override = state.contentOverrides.get(key) || state.contentOverrides.get(String(it.id));
+    if (!override) return it;
+
+    return {
+      ...it,
+      title: override.title || it.title || it.name,
+      name: override.title || it.title || it.name,
+      overview: (override.overview !== undefined && override.overview !== '') ? override.overview : it.overview,
+      poster_path: override.poster_path ? override.poster_path : it.poster_path,
+      backdrop_path: override.backdrop_path ? override.backdrop_path : it.backdrop_path,
+      vote_average: override.rating ? Number(override.rating) : it.vote_average,
+      _isOverridden: true
+    };
+  }
+
+  return {
+    init,
+    revalidate,
+    logEvent,
+    applyOverride,
+    getHeroSlides: () => state.heroSlides,
+    getCustomSections: () => state.homepageSections,
+    getIntroConfig: () => state.introSettings,
+    getSiteConfig: () => state.websiteSettings,
+    getClient: () => sb
+  };
+})();
+
 
 /* ==========================================================================
    9. APPLICATION CORE & TMDB INTEGRATION
@@ -946,15 +1300,16 @@ function fallbackCopy(txt,msg){
 
 function resetObs(){if(obs)obs.disconnect();obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){obs.unobserve(e.target);e.target._fn?.()}}),{rootMargin:'450px 0px'})}
 
-function card(it,ft,sh='portrait',rk=null,grid=0){
+function card(rawIt,ft,sh='portrait',rk=null,grid=0){
+  const it = FlixoraSupabase.applyOverride(rawIt, ft);
   let tp=ft||it.media_type||(it.first_air_date?'tv':'movie'),tt=it.title||it.name||'',d=document.createElement('div');
   let cl={portrait:'clip-portrait',rank:'clip-portrait',wide:'clip-wide',slant:'clip-slant',chamfer:'clip-chamfer',arch:'clip-arch',leaf:'clip-leaf'}[sh]||'clip-portrait';
   d.onclick=()=>openDetails(it.id,tp);
-  if(grid){d.className=`glow-ring ${cl} w-full h-[210px] sm:h-[245px]`;d.innerHTML=`<div class="w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${IMG}${it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover"></div>`;return d}
-  if(sh==='wide'){d.className=`glow-ring ${cl} shrink-0 w-[240px] sm:w-[275px] h-[140px] sm:h-[158px]`;d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${IMG}${it.backdrop_path||it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover"><div class="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black via-black/75 to-transparent flex justify-between gap-2"><p class="text-xs font-bold truncate">${tt}</p><span class="text-[10px] text-aiCyan font-bold">★ ${it.vote_average?it.vote_average.toFixed(1):'NR'}</span></div></div>`;return d}
-  if(sh==='rank'){d.className=`glow-ring ${cl} relative shrink-0 w-[134px] sm:w-[164px] h-[198px] sm:h-[244px]`;d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><span class="absolute top-2 left-2 z-10 bg-black/85 text-aiCyan border border-aiCyan/60 text-xs font-black px-2 py-0.5 rounded-md">#${rk+1}</span><img src="${IMG}${it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover"></div>`;return d}
+  if(grid){d.className=`glow-ring ${cl} w-full h-[210px] sm:h-[245px]`;d.innerHTML=`<div class="w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${(it.poster_path && it.poster_path.startsWith('http')) ? it.poster_path : (IMG + it.poster_path)}" loading="lazy" decoding="async" class="w-full h-full object-cover"></div>`;return d}
+  if(sh==='wide'){d.className=`glow-ring ${cl} shrink-0 w-[240px] sm:w-[275px] h-[140px] sm:h-[158px]`;d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${(it.backdrop_path && it.backdrop_path.startsWith('http')) ? it.backdrop_path : ((it.poster_path && it.poster_path.startsWith('http')) ? it.poster_path : (IMG + (it.backdrop_path || it.poster_path)))}" loading="lazy" decoding="async" class="w-full h-full object-cover"><div class="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black via-black/75 to-transparent flex justify-between gap-2"><p class="text-xs font-bold truncate">${tt}</p><span class="text-[10px] text-aiCyan font-bold">★ ${it.vote_average?it.vote_average.toFixed(1):'NR'}</span></div></div>`;return d}
+  if(sh==='rank'){d.className=`glow-ring ${cl} relative shrink-0 w-[134px] sm:w-[164px] h-[198px] sm:h-[244px]`;d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><span class="absolute top-2 left-2 z-10 bg-black/85 text-aiCyan border border-aiCyan/60 text-xs font-black px-2 py-0.5 rounded-md">#${rk+1}</span><img src="${(it.poster_path && it.poster_path.startsWith('http')) ? it.poster_path : (IMG + it.poster_path)}" loading="lazy" decoding="async" class="w-full h-full object-cover"></div>`;return d}
   d.className=`glow-ring ${cl} shrink-0 ${sh==='slant'?'w-[148px] sm:w-[174px] h-[205px] sm:h-[240px]':'w-[134px] sm:w-[164px] h-[198px] sm:h-[242px]'}`;
-  d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${IMG}${it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover">${sh==='slant'?`<div class="absolute inset-x-0 bottom-0 p-2.5 pl-4 bg-gradient-to-t from-black/95 to-transparent"><p class="text-[11px] font-bold truncate">${tt}</p></div>`:''}</div>`;
+  d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${(it.poster_path && it.poster_path.startsWith('http')) ? it.poster_path : (IMG + it.poster_path)}" loading="lazy" decoding="async" class="w-full h-full object-cover">${sh==='slant'?`<div class="absolute inset-x-0 bottom-0 p-2.5 pl-4 bg-gradient-to-t from-black/95 to-transparent"><p class="text-[11px] font-bold truncate">${tt}</p></div>`:''}</div>`;
   return d;
 }
 
@@ -978,7 +1333,12 @@ async function initHome(onProgress){
   $('heroSection').classList.remove('hidden');
   if(page==='home')$('homeView').classList.remove('hidden');
   homeTop=tr.results.filter(i=>i.poster_path&&(i.media_type==='movie'||i.media_type==='tv')).slice(0,10);
-  slides=homeTop;
+  const customHero = FlixoraSupabase.getHeroSlides();
+  if (customHero && customHero.length) {
+    slides = [...customHero, ...homeTop.slice(0, Math.max(0, 10 - customHero.length))];
+  } else {
+    slides = homeTop;
+  }
   prefetchSlideTrailers(slides.slice(0,3));
   renderHome();
   showSlide(0);
@@ -988,7 +1348,12 @@ async function initHome(onProgress){
 function renderHome(){
   resetObs();let c=$('rowsContainer');c.innerHTML='';
   const earlyPromises=[];
-  HOME_R.forEach((r,i)=>{
+  const customSections = FlixoraSupabase.getCustomSections();
+  const rowsToRender = (customSections && customSections.length)
+    ? customSections.map(s => [s.title, s.tmdb_endpoint, (s.source_type?.includes('tv') ? 'tv' : 'movie'), s.card_shape, null])
+    : HOME_R;
+
+  rowsToRender.forEach((r,i)=>{
     let s=document.createElement('section');
     s.className='row-section';
     s.innerHTML=`<h2 class="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">${r[0]}${i===0?'<span class="text-aiCyan text-xs bg-aiCyan/10 px-2 py-0.5 rounded border border-aiCyan/20">Auto-Scroll</span>':''}</h2><div id="${i===0?'homeTop10':'hr_'+i}" class="flex gap-4 sm:gap-6 overflow-x-auto custom-scrollbar pb-5 pt-2 px-1 ${i===0?'scroll-smooth':''}"><div class="w-[134px] h-[198px] rounded-xl bg-white/5 animate-pulse shrink-0"></div><div class="w-[134px] h-[198px] rounded-xl bg-white/5 animate-pulse shrink-0"></div></div>`;
@@ -1015,7 +1380,8 @@ function autoScroll(){
 }
 
 async function openPage(p){
-  page=p;document.querySelectorAll('.nav-link').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
+  page=p;
+  FlixoraSupabase.logEvent('page_view', { page: p, title: 'Flixora — ' + p });document.querySelectorAll('.nav-link').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
   $('searchInput').placeholder={
     home:'Search all movies, series, anime...',
     movie:'Search ONLY Movies...',
@@ -1161,7 +1527,7 @@ function showSlide(i) {
   const it = slides[hIdx];
   const tp = it.media_type || (it.first_air_date ? 'tv' : 'movie');
   hideHeroTrailerLayer();
-  $('heroBgImg').style.backgroundImage = `url(${ORG}${it.backdrop_path || it.poster_path})`;
+  const heroBg = it.backdrop_path || it.poster_path; $('heroBgImg').style.backgroundImage = (heroBg && heroBg.startsWith('http')) ? `url(${heroBg})` : `url(${ORG}${heroBg})`;
   $('heroBadge').innerText = `${{home:'Flixora AI Pick',movie:'Best Movie',tv:'Best Series',indiantv:'Best Indian TV',anime:'Best Anime',kdrama:'Best K-Drama'}[page]} • #${hIdx + 1}`;
   $('heroCounter').innerText = `${hIdx + 1}/${slides.length}`;
   $('heroTitle').innerText = it.title || it.name;
@@ -1183,7 +1549,11 @@ async function playHero(i) {
   if (!it || !heroCanAutoPlay) return;
 
   hideHeroTrailerLayer();
-  await fetchSlideVideoKeys(it);
+  if (!it._custom || !it._keys?.length) {
+    await fetchSlideVideoKeys(it);
+  } else {
+    FlixoraSupabase.logEvent('trailer_play', { title: it.title, tmdb_id: it.id, metadata: { custom: true } });
+  }
   if (i !== hIdx || !heroCanAutoPlay) return;
 
   const k = it._keys?.[trTry];
@@ -1303,6 +1673,7 @@ function toggleHeroSound(){
 }
 
 async function openDetails(id,tp){
+  FlixoraSupabase.logEvent('detail_open', { tmdb_id: id, category: tp });
   if(heroReady)heroP?.pauseVideo?.();clearTimeout(fbTmr);clearTimeout(playChkTmr);
   $('detailsModal').classList.remove('hidden');$('modalLoader').classList.remove('hidden');$('modalContent').classList.add('hidden');document.body.style.overflow='hidden';
   killModP();
@@ -2461,8 +2832,14 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-  IntroController.start();
+document.addEventListener('DOMContentLoaded', async () => {
+  await FlixoraSupabase.init();
+  const introConf = FlixoraSupabase.getIntroConfig();
+  if (introConf.enabled === false) {
+    IntroController.skip();
+  } else {
+    IntroController.start();
+  }
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       if (!$('lightboxModal').classList.contains('hidden')) $('lightboxModal').classList.add('hidden');
