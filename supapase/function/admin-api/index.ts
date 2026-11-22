@@ -98,3 +98,4 @@ serve(async (req: Request) => {
     { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });
+
