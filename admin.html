@@ -285,7 +285,7 @@
             </div>
 
             <!-- Sign In Form -->
-            <form id="loginForm" class="space-y-4">
+            <form id="loginForm" onsubmit="event.preventDefault(); return false;" class="space-y-4">
                 <div class="space-y-1.5">
                     <label for="loginEmail" class="text-xs font-semibold text-zinc-300">Super Admin Email</label>
                     <input id="loginEmail" type="email" required autocomplete="username"
@@ -1402,10 +1402,9 @@
            SUPER ADMIN AUTHORIZATION CONFIGURATION (SINGLE SUPER ADMIN ENFORCEMENT)
            ========================================================================== */
         /**
-         * 1. Paste your Super Admin UUID here from Supabase Dashboard -> Authentication -> Users.
-         *    Once configured, ONLY this specific UUID can authenticate and execute database actions.
+         * 1. Configured Super Admin UUID (From Supabase Dashboard -> Auth -> Users):
          */
-        const SUPER_ADMIN_UUID = '540e9d75-3e05-48c9-bb5c-5dac0db4c3f0'; // e.g. '00000000-0000-0000-0000-000000000000'
+        const SUPER_ADMIN_UUID = '540e9d75-3e05-48c9-bb5c-5dac0db4c3f0';
 
         /**
          * 2. Authorized Super Admin Email:
@@ -1515,14 +1514,12 @@
                 const confUuid = (typeof SUPER_ADMIN_UUID !== 'undefined' ? SUPER_ADMIN_UUID : '').trim();
                 const confEmail = (typeof SUPER_ADMIN_EMAIL !== 'undefined' ? SUPER_ADMIN_EMAIL : 'dj4550797@gmail.com').trim().toLowerCase();
 
-                // If SUPER_ADMIN_UUID is specified, strictly check user.id
-                if (confUuid) {
-                    return user.id === confUuid;
-                }
-                // During initial setup before UUID is pasted, authorize configured email
-                if (confEmail) {
-                    return (user.email || '').toLowerCase() === confEmail;
-                }
+                // 1. If UUID matches configured UUID
+                if (confUuid && user.id === confUuid) return true;
+
+                // 2. Or if email matches configured Super Admin email
+                if (confEmail && (user.email || '').toLowerCase() === confEmail) return true;
+
                 return false;
             }
 
@@ -1537,7 +1534,10 @@
             function showErr(msg) {
                 $('loginSuccessBox').classList.add('hidden');
                 const b = $('loginErrorBox');
-                b.textContent = msg;
+                b.innerHTML = `<div class="flex items-start gap-2">
+                    <svg class="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>${esc(msg)}</span>
+                </div>`;
                 b.classList.remove('hidden');
             }
             function showOk(msg) {
@@ -1547,9 +1547,11 @@
                 b.classList.remove('hidden');
             }
 
-            function showMode(mode) {
-                $('loginErrorBox').classList.add('hidden');
-                $('loginSuccessBox').classList.add('hidden');
+            function showMode(mode, clearErrors = true) {
+                if (clearErrors) {
+                    $('loginErrorBox').classList.add('hidden');
+                    $('loginSuccessBox').classList.add('hidden');
+                }
                 $('loginForm').classList.toggle('hidden', mode !== 'login');
                 $('forgotForm').classList.toggle('hidden', mode !== 'forgot');
                 $('recoveryForm').classList.toggle('hidden', mode !== 'recovery');
@@ -1569,34 +1571,57 @@
             }
 
             async function enterDashboard(sess) {
-                if (!isAuthorizedSuperAdmin(sess?.user)) {
+                if (!sess?.user || !isAuthorizedSuperAdmin(sess.user)) {
                     await sb.auth.signOut();
-                    lockToLogin(`Access Denied: Account ${sess?.user?.email || 'Unknown'} (UUID: ${sess?.user?.id}) is not the configured Super Admin.`);
+                    lockToLogin(`Access Denied: Account "${sess?.user?.email || 'Unknown'}" (UUID: ${sess?.user?.id}) is not the authorized Super Admin.`);
                     return;
                 }
                 session = sess;
                 $('authGate').classList.add('hidden');
                 $('adminShell').classList.remove('hidden');
-                const uId = sess.user?.id || '';
-                $('adminEmailBadge').innerHTML = `<span>${esc(sess.user?.email || 'Super Admin')}</span> <span class="font-mono text-[10px] text-aiCyan bg-aiCyan/10 px-2 py-0.5 rounded cursor-pointer border border-aiCyan/30" onclick="navigator.clipboard.writeText('${uId}');toast('Admin UUID copied!')" title="Click to copy Super Admin UUID">UUID: ${uId.slice(0, 8)}...</span>`;
-                AdminApp.boot(sess);
+                const uId = sess.user.id || '';
+                $('adminEmailBadge').innerHTML = `<span>${esc(sess.user.email || 'Super Admin')}</span> <span class="font-mono text-[10px] text-aiCyan bg-aiCyan/10 px-2 py-0.5 rounded cursor-pointer border border-aiCyan/30" onclick="navigator.clipboard.writeText('${uId}');toast('Admin UUID copied!')" title="Click to copy Super Admin UUID">UUID: ${uId.slice(0, 8)}...</span>`;
+                try {
+                    await AdminApp.boot(sess);
+                } catch (bootErr) {
+                    console.warn('[AdminApp Boot Error]', bootErr);
+                }
             }
 
             function lockToLogin(msg = '') {
                 session = null;
                 $('adminShell').classList.add('hidden');
                 $('authGate').classList.remove('hidden');
-                showMode('login');
+                showMode('login', !msg);
                 if (msg) showErr(msg);
             }
 
             $('loginForm').addEventListener('submit', async e => {
                 e.preventDefault();
+                e.stopPropagation();
                 if (!checkRateLimit()) return;
-                const email = $('loginEmail').value.trim();
-                const password = $('loginPassword').value;
-                await withLock($('loginSubmitBtn'), async () => {
+
+                const emailInput = $('loginEmail');
+                const passInput = $('loginPassword');
+                const submitBtn = $('loginSubmitBtn');
+                const email = emailInput.value.trim();
+                const password = passInput.value;
+
+                if (!email || !password) {
+                    showErr('Please enter both email and password.');
+                    return;
+                }
+
+                // Visible loading state
+                const origBtnContent = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="inline-flex items-center justify-center gap-2"><svg class="animate-spin w-4 h-4 text-black" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>Verifying Super Admin...</span>';
+                emailInput.disabled = true;
+                passInput.disabled = true;
+
+                try {
                     const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
                     if (error || !data?.session) {
                         const rl = getRl();
                         rl.fails = (rl.fails || 0) + 1;
@@ -1605,23 +1630,42 @@
                         }
                         setRl(rl);
                         checkRateLimit();
-                        showErr('Invalid credentials or unauthorized account.');
+                        // Keep email and password intact! Show exact error message:
+                        showErr(error?.message || 'Invalid login credentials. Please check your email and password.');
                         return;
                     }
-                    setRl({ fails: 0, until: 0 });
-                    $('loginPassword').value = '';
+
+                    // Check Super Admin authorization
                     if (!isAuthorizedSuperAdmin(data.session.user)) {
+                        const userEmail = data.session.user.email || 'Unknown';
+                        const userUid = data.session.user.id || 'Unknown';
                         await sb.auth.signOut();
-                        showErr(`Access Denied: Account "${data.session.user.email}" is not authorized as the Super Admin.`);
+                        // Keep fields intact, display exact access denied message:
+                        showErr(`Access Denied: Account "${userEmail}" (UUID: ${userUid}) is not the authorized Super Admin.`);
                         return;
                     }
+
+                    // Authorized! Reset rate limit counter and clear password
+                    setRl({ fails: 0, until: 0 });
+                    passInput.value = '';
+
                     await AdminApp.logActivity(data.session, 'login', 'auth', data.session.user.id, 'Super Admin signed in');
                     await enterDashboard(data.session);
-                });
+
+                } catch (err) {
+                    console.error('[Login Exception]', err);
+                    showErr(err.message || 'An unexpected error occurred during authentication.');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnContent;
+                    emailInput.disabled = false;
+                    passInput.disabled = false;
+                }
             });
 
             $('forgotForm').addEventListener('submit', async e => {
                 e.preventDefault();
+                e.stopPropagation();
                 const email = $('forgotEmail').value.trim();
                 await withLock($('forgotSubmitBtn'), async () => {
                     const redirectTo = window.location.href.split('#')[0].split('?')[0];
@@ -1633,6 +1677,7 @@
 
             $('recoveryForm').addEventListener('submit', async e => {
                 e.preventDefault();
+                e.stopPropagation();
                 const p1 = $('recoveryPassword').value;
                 const p2 = $('recoveryConfirm').value;
                 if (p1 !== p2) { showErr('Passwords do not match.'); return; }
@@ -1640,19 +1685,23 @@
                     const { data, error } = await sb.auth.updateUser({ password: p1 });
                     if (error) { showErr(error.message || 'Password update failed.'); return; }
                     const { data: s } = await sb.auth.getSession();
-                    if (s?.session) enterDashboard(s.session);
+                    if (s?.session) await enterDashboard(s.session);
                     else { showMode('login'); showOk('Password updated. Please sign in.'); }
                 });
             });
 
             async function init() {
-                sb.auth.onAuthStateChange((event, sess) => {
+                sb.auth.onAuthStateChange(async (event, sess) => {
                     if (event === 'PASSWORD_RECOVERY') {
                         $('adminShell').classList.add('hidden');
                         $('authGate').classList.remove('hidden');
                         showMode('recovery');
                     } else if (event === 'SIGNED_OUT') {
-                        lockToLogin();
+                        session = null;
+                        // Only lock to login if the shell was currently visible (prevents wiping error messages on failed login attempts)
+                        if (!$('adminShell').classList.contains('hidden')) {
+                            lockToLogin();
+                        }
                     } else if (event === 'TOKEN_REFRESHED' && sess) {
                         session = sess;
                     }
@@ -1664,7 +1713,7 @@
                         await enterDashboard(data.session);
                     } else {
                         await sb.auth.signOut();
-                        lockToLogin('Unauthorized user session ended.');
+                        lockToLogin('Unauthorized session ended.');
                     }
                 } else {
                     lockToLogin();
