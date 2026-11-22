@@ -1,0 +1,2346 @@
+
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Flixora — Movie ID Finder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        aiCyan: '#00f2fe',
+        aiBlue: '#4facfe',
+        dark: '#07090f'
+      }
+    }
+  }
+};
+</script>
+<style>
+/* ==========================================================================
+   1. CSS VARIABLES & DESIGN TOKENS
+   ========================================================================== */
+:root {
+  --fx-bg: #07090f;
+  --fx-intro-bg: #04060c;
+  --fx-cyan: #00f2fe;
+  --fx-blue: #4facfe;
+  --fx-purple: #a855f7;
+  --fx-pink: #ec4899;
+  --fx-ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+  --fx-ease-paper: cubic-bezier(0.22, 1, 0.36, 1);
+  --fx-glass-bg: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  --fx-glass-border: rgba(255,255,255,.14);
+}
+
+/* ==========================================================================
+   2. BASE & RESPONSIVE STYLING (EXISTING APP PRESERVED)
+   ========================================================================== */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+body {
+  background: var(--fx-bg);
+  position: relative;
+  min-height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(0,242,254,.1), transparent 36%),
+    radial-gradient(circle at 85% 30%, rgba(79,172,254,.09), transparent 38%);
+  transform: translateZ(0);
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,242,254,.45); border-radius: 10px; }
+
+.liquid-glass {
+  background: var(--fx-glass-bg);
+  border: 1px solid var(--fx-glass-border);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.modal-glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.liquid-pill {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  transition: border-color .2s, background-color .2s, color .2s;
+}
+.liquid-pill:hover { border-color: var(--fx-cyan); background: rgba(0,242,254,.12); }
+.liquid-pill.active {
+  background: linear-gradient(135deg, rgba(0,242,254,.26), rgba(79,172,254,.22));
+  border-color: var(--fx-cyan);
+  color: var(--fx-cyan);
+  box-shadow: 0 0 14px rgba(0,242,254,.25);
+}
+.site-header {
+  background: rgba(7,9,15,.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0,242,254,.16);
+}
+.row-section { content-visibility: auto; contain-intrinsic-size: auto 285px; }
+
+/* Suspend expensive backdrop-filter & pulse repaints during Swarm Canvas 60fps build */
+body.swarm-building .site-header {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(7,9,15,.98) !important;
+}
+body.swarm-building .animate-pulse {
+  animation: none !important;
+}
+
+.glow-ring {
+  padding: 2px;
+  background: linear-gradient(125deg, #00f2fe, #4facfe, #a855f7, #ec4899, #00f2fe);
+  transition: transform .22s ease, box-shadow .22s ease;
+  cursor: pointer;
+  will-change: transform;
+}
+@media (hover: hover) {
+  .glow-ring:hover {
+    transform: translate3d(0, -5px, 0) scale(1.035);
+    box-shadow: 0 0 16px rgba(0,242,254,.45), 0 0 22px rgba(236,72,153,.32);
+    z-index: 10;
+  }
+}
+.clip-portrait { border-radius: .85rem; }
+.clip-wide { border-radius: .9rem; }
+.clip-slant { clip-path: polygon(9% 0%, 100% 0%, 91% 100%, 0% 100%); }
+.clip-chamfer { clip-path: polygon(14% 0, 86% 0, 100% 14%, 100% 86%, 86% 100%, 14% 100%, 0 86%, 0 14%); }
+.clip-arch { border-radius: 80px 80px 14px 14px; }
+.clip-leaf { border-radius: 36px 8px 36px 8px; }
+
+#heroTrailerWrap iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 56.25vw;
+  min-height: 100%;
+  min-width: 177.78vh;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border: 0;
+}
+.ai-loader {
+  border: 3px solid rgba(0,242,254,.15);
+  border-top: 3px solid var(--fx-cyan);
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
+  animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   3. INTRO SCREEN STYLING & LIGHTING
+   ========================================================================== */
+#introOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--fx-intro-bg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity .45s ease;
+}
+.intro-ambient {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(0,242,254,.14), transparent 44%),
+    radial-gradient(circle at 50% 68%, rgba(79,172,254,.11), transparent 48%),
+    radial-gradient(circle at 20% 80%, rgba(168,85,247,.07), transparent 40%);
+  transform: translate3d(0,0,0);
+  animation: ambientDrift 12s ease-in-out infinite alternate;
+}
+.intro-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, transparent 45%, rgba(2,3,8,.82) 100%);
+}
+@keyframes ambientDrift {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+  100% { transform: translate3d(2%, 1.5%, 0) scale(1.06); }
+}
+
+.intro-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .42s ease, visibility .42s ease;
+}
+.intro-stage.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* ==========================================================================
+   4. STAGE 01 & STAGE 02 — LOGO ANIMATIONS
+   ========================================================================== */
+.fall-stage {
+  perspective: 1100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.fall-spotlight {
+  position: absolute;
+  top: -120px;
+  width: 240px;
+  height: 360px;
+  background: radial-gradient(ellipse at top, rgba(0,242,254,.18), transparent 72%);
+  filter: blur(18px);
+  opacity: 0;
+  transition: opacity .8s ease;
+  pointer-events: none;
+}
+.fall-spotlight.lit { opacity: 1; }
+
+.fall-logo-wrap {
+  position: relative;
+  will-change: transform, opacity;
+  transform: translate3d(0, -78vh, 0) scale(.84) rotateX(20deg) rotateZ(-6deg);
+  opacity: 0;
+}
+.fall-impact-ring {
+  position: relative;
+  width: 150px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0,242,254,.55);
+  opacity: 0;
+  transform: scale(.35);
+  pointer-events: none;
+}
+.fall-impact-ring.pulse {
+  animation: impactRipple .75s var(--fx-ease-cinematic) forwards;
+}
+@keyframes impactRipple {
+  0% { opacity: .85; transform: scale(.35); }
+  100% { opacity: 0; transform: scale(1.65); }
+}
+.fall-shadow {
+  width: 120px;
+  height: 15px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.86), transparent 72%);
+  opacity: 0;
+  transform: scale(.25);
+  will-change: transform, opacity;
+}
+.fall-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition: transform .54s var(--fx-ease-cinematic), opacity .48s ease;
+}
+.fall-text-ready .fall-word {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Stage 02: Organic Crumpled-Paper Uncrumpling -> Flixora Logo + POWERED BY FLIXORA */
+.paper-scene {
+  perspective: 1300px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.paper-wad-stage {
+  position: relative;
+  width: 248px;
+  height: 184px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+}
+@media (min-width: 640px) {
+  .paper-wad-stage { width: 340px; height: 236px; }
+}
+
+.paper-floor-shadow {
+  position: absolute;
+  bottom: -18px;
+  width: 58%;
+  height: 22px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.78), transparent 72%);
+  opacity: 0;
+  transform: scale(.45);
+  transition: transform .9s var(--fx-ease-paper), opacity .75s ease;
+  pointer-events: none;
+}
+.paper-wad-stage.crumple-in .paper-floor-shadow { opacity: .85; transform: scale(.68); }
+.paper-wad-stage.uncrumple-mid .paper-floor-shadow { opacity: .72; transform: scale(.96); }
+.paper-wad-stage.uncrumple-flat .paper-floor-shadow { opacity: .55; transform: scale(1.1); }
+.paper-wad-stage.paper-fade .paper-floor-shadow { opacity: 0; transform: scale(1.18); }
+
+.paper-sheet {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 22px;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.96), rgba(226,232,240,.92) 48%, rgba(148,163,184,.92) 100%);
+  box-shadow: inset 0 0 28px rgba(15,23,42,.22), 0 24px 55px rgba(0,0,0,.65);
+  clip-path: polygon(26% 18%, 52% 11%, 76% 20%, 84% 48%, 74% 80%, 48% 87%, 22% 78%, 15% 47%);
+  transform: translate3d(0, 14px, 0) scale(.34) rotateX(28deg) rotateY(-24deg) rotateZ(-16deg);
+  opacity: 0;
+  will-change: transform, clip-path, opacity;
+  transition:
+    transform .78s var(--fx-ease-paper),
+    clip-path .78s var(--fx-ease-paper),
+    opacity .55s ease,
+    box-shadow .78s ease;
+}
+.paper-wad-stage.crumple-in .paper-sheet {
+  opacity: 1;
+  clip-path: polygon(24% 16%, 51% 9%, 78% 19%, 86% 49%, 75% 81%, 48% 89%, 20% 79%, 13% 47%);
+  transform: translate3d(0, 0, 0) scale(.62) rotateX(22deg) rotateY(-14deg) rotateZ(-8deg);
+}
+.paper-wad-stage.uncrumple-mid .paper-sheet {
+  opacity: 1;
+  clip-path: polygon(7% 6%, 51% 2%, 93% 7%, 97% 49%, 92% 93%, 49% 98%, 8% 92%, 3% 50%);
+  transform: translate3d(0, 0, 0) scale(.92) rotateX(9deg) rotateY(5deg) rotateZ(2.5deg);
+}
+.paper-wad-stage.uncrumple-flat .paper-sheet {
+  opacity: 1;
+  clip-path: polygon(0% 0%, 50% 0%, 100% 0%, 100% 50%, 100% 100%, 50% 100%, 0% 100%, 0% 50%);
+  transform: translate3d(0, 0, 0) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  box-shadow: inset 0 0 14px rgba(15,23,42,.12), 0 18px 46px rgba(0,242,254,.14);
+}
+.paper-wad-stage.paper-fade .paper-sheet {
+  background: transparent;
+  box-shadow: none;
+}
+
+.paper-facets-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: .95;
+  transform: scale(1.06) rotate(-2deg);
+  transition: opacity .7s ease, transform .82s var(--fx-ease-paper);
+}
+.paper-facets-svg .crease-facet {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform .82s var(--fx-ease-paper), opacity .72s ease;
+}
+.paper-wad-stage.uncrumple-mid .paper-facets-svg { opacity: .56; transform: scale(1.02) rotate(0deg); }
+.paper-wad-stage.uncrumple-mid .paper-facets-svg .crease-facet:nth-child(odd) { transform: scale(0.96) skewX(2deg); }
+.paper-wad-stage.uncrumple-flat .paper-facets-svg { opacity: .12; transform: scale(1); }
+.paper-wad-stage.uncrumple-flat .paper-facets-svg .crease-facet { transform: none; }
+.paper-wad-stage.paper-fade .paper-facets-svg { opacity: 0; }
+
+.paper-surface-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(128deg, rgba(255,255,255,.78) 0%, rgba(226,232,240,.52) 48%, rgba(148,163,184,.58) 100%),
+    repeating-linear-gradient(28deg, rgba(15,23,42,.03) 0 2px, transparent 2px 9px);
+  transition: opacity .65s ease;
+  pointer-events: none;
+}
+.paper-wad-stage.paper-fade .paper-surface-bg { opacity: 0; }
+
+.paper-logo-stage {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: .08;
+  filter: blur(2.5px) contrast(.85);
+  transform: scale(.46) rotateX(22deg) rotateY(-14deg) rotateZ(-9deg) skewX(8deg);
+  will-change: transform, opacity, filter;
+  transition: transform .85s var(--fx-ease-paper), opacity .7s ease, filter .7s ease;
+}
+.paper-wad-stage.uncrumple-mid .paper-logo-stage {
+  opacity: .68;
+  filter: blur(.6px) contrast(.96);
+  transform: scale(.86) rotateX(8deg) rotateY(4deg) rotateZ(2deg) skewX(2deg);
+}
+.paper-wad-stage.uncrumple-flat .paper-logo-stage,
+.paper-wad-stage.paper-fade .paper-logo-stage {
+  opacity: 1;
+  filter: blur(0px) contrast(1);
+  transform: scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skewX(0deg);
+}
+
+.flixora-sheen-wrap { position: relative; overflow: hidden; border-radius: 18px; padding: 10px 14px; }
+.flixora-sheen {
+  position: absolute;
+  top: -20%;
+  left: -95%;
+  width: 55%;
+  height: 140%;
+  background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.72) 50%, transparent 80%);
+  transform: skewX(-18deg);
+  pointer-events: none;
+  opacity: 0;
+}
+.flixora-sheen.sweep { opacity: 1; animation: lightSweep 1s var(--fx-ease-paper) forwards; }
+@keyframes lightSweep {
+  0% { transform: translate3d(-30%, 0, 0) skewX(-18deg); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate3d(430%, 0, 0) skewX(-18deg); opacity: 0; }
+}
+
+.powered-text {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  letter-spacing: .34em;
+  transition: opacity .65s ease, transform .65s var(--fx-ease-cinematic);
+}
+.powered-text.show { opacity: 1; transform: translate3d(0, 0, 0); }
+
+/* ==========================================================================
+   5. STAGE 03 — INTELLIGENT LOADING SCREEN STYLING
+   ========================================================================== */
+.cinema-aperture {
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0,242,254,.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: radial-gradient(circle, rgba(0,242,254,.08), transparent 70%);
+}
+.cinema-aperture::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  border-top-color: var(--fx-cyan);
+  border-right-color: var(--fx-blue);
+  animation: spin 2.2s linear infinite;
+}
+.loader-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.6);
+}
+.loader-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00f2fe, #4facfe, #a855f7);
+  transform-origin: left center;
+  transform: scaleX(0);
+  will-change: transform;
+}
+
+/* ==========================================================================
+   6. STAGE 04 — SWARM CURSOR SELF-BUILDING STYLING
+   ========================================================================== */
+.swarm-prep {
+  opacity: 0 !important;
+  transform: translate3d(0, 8px, 0) scale(.98) !important;
+}
+.swarm-revealed {
+  transition: opacity .3s var(--fx-ease-cinematic), transform .3s var(--fx-ease-cinematic) !important;
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) scale(1) !important;
+}
+.swarm-bg-prep { opacity: 0 !important; }
+.swarm-bg-revealed { transition: opacity .5s ease !important; opacity: 1 !important; }
+.swarm-card-prep { opacity: 0 !important; transform: scale(.94) !important; }
+.swarm-card-in {
+  transition: opacity .28s var(--fx-ease-cinematic), transform .28s var(--fx-ease-cinematic) !important;
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+#swarmCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 195;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+/* ==========================================================================
+   7. ACCESSIBILITY & REDUCED MOTION
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .intro-ambient,
+  .fall-impact-ring.pulse,
+  .flixora-sheen.sweep,
+  .cinema-aperture::after {
+    animation: none !important;
+  }
+  .fall-logo-wrap { transform: none !important; opacity: 1 !important; }
+  .swarm-prep, .swarm-bg-prep, .swarm-card-prep { opacity: 1 !important; transform: none !important; }
+}
+</style>
+</head>
+<body class="text-white font-sans overflow-x-hidden selection:bg-aiCyan selection:text-black">
+
+<!-- ========================================================================
+     CINEMATIC INTRO OVERLAY (STAGES 01, 02, 03) + SWARM CANVAS (STAGE 04)
+     ======================================================================== -->
+<div id="introOverlay" role="dialog" aria-modal="true" aria-label="Flixora Cinematic Introduction">
+  <div class="intro-ambient"></div>
+  <div class="intro-vignette"></div>
+
+  <button id="skipIntroBtn" type="button" onclick="IntroController.skip()" aria-label="Skip Introduction" class="fixed top-4 right-4 sm:top-6 sm:right-6 z-[220] liquid-pill px-4 py-2 rounded-full text-xs font-bold text-zinc-100 hover:text-aiCyan focus:outline-none focus:ring-2 focus:ring-aiCyan flex items-center gap-1.5 shadow-lg cursor-pointer">
+    <span>Skip Intro</span><span aria-hidden="true">⏭</span>
+  </button>
+
+  <!-- STAGE 01: Movie ID Finder Logo Fall -->
+  <div id="stageLogoFall" class="intro-stage">
+    <div class="fall-stage">
+      <div id="fallSpotlight" class="fall-spotlight"></div>
+      <div id="fallLogoWrap" class="fall-logo-wrap">
+        <img id="movieIdLogoImg" alt="Movie ID Finder Logo" class="w-28 sm:w-36 md:w-40 h-auto rounded-2xl shadow-[0_22px_55px_rgba(0,242,254,0.2)] border border-white/20 select-none bg-zinc-900/60">
+        <div id="movieIdLogoFallback" class="hidden w-28 sm:w-36 md:w-40 h-28 sm:h-36 md:h-40 rounded-2xl border border-aiCyan/40 bg-zinc-900 flex items-center justify-center text-center p-3 font-black text-aiCyan text-sm">MOVIE ID FINDER</div>
+      </div>
+      <div id="fallImpactRing" class="fall-impact-ring"></div>
+      <div id="fallShadow" class="fall-shadow"></div>
+      <h2 id="fallTitleText" class="mt-6 text-center text-lg sm:text-2xl md:text-3xl font-black tracking-wide text-white px-4">
+        <span class="fall-word" style="transition-delay:0ms">Flixora</span>
+        <span class="fall-word text-aiCyan" style="transition-delay:85ms">Movie</span>
+        <span class="fall-word text-aiCyan" style="transition-delay:165ms">ID</span>
+        <span class="fall-word" style="transition-delay:245ms">And</span>
+        <span class="fall-word text-aiBlue" style="transition-delay:325ms">Watch</span>
+      </h2>
+    </div>
+  </div>
+
+  <!-- STAGE 02: Organic Crumpled-Paper Unfolding -> POWERED BY FLIXORA -->
+  <div id="stagePaperReveal" class="intro-stage">
+    <div class="paper-scene">
+      <div id="paperParcel" class="paper-wad-stage">
+        <div class="paper-floor-shadow"></div>
+        <div class="paper-sheet">
+          <div class="paper-surface-bg"></div>
+
+          <div class="paper-logo-stage">
+            <div class="flixora-sheen-wrap">
+              <img id="flixoraLogoImg" alt="Flixora Logo" class="w-40 sm:w-52 h-auto object-contain drop-shadow-[0_14px_30px_rgba(79,172,254,0.45)] select-none">
+              <div id="flixoraLogoFallback" class="hidden w-40 sm:w-52 py-6 rounded-xl border border-aiBlue/40 bg-zinc-900/90 text-center font-black text-2xl tracking-tight text-aiCyan">FLIXORA</div>
+              <div id="flixoraSheen" class="flixora-sheen"></div>
+            </div>
+          </div>
+
+          <svg class="paper-facets-svg" viewBox="0 0 340 236" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="pfLight" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.72"/>
+                <stop offset="100%" stop-color="#cbd5e1" stop-opacity="0.3"/>
+              </linearGradient>
+              <linearGradient id="pfShade" x1="1" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#94a3b8" stop-opacity="0.58"/>
+                <stop offset="100%" stop-color="#475569" stop-opacity="0.45"/>
+              </linearGradient>
+              <linearGradient id="pfMid" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stop-color="#e2e8f0" stop-opacity="0.62"/>
+                <stop offset="100%" stop-color="#64748b" stop-opacity="0.38"/>
+              </linearGradient>
+            </defs>
+            <g class="crease-facet">
+              <polygon points="0,0 128,0 92,76 0,58" fill="url(#pfLight)"/>
+              <polygon points="128,0 232,0 178,66 92,76" fill="url(#pfShade)"/>
+              <polygon points="232,0 340,0 340,86 254,74 178,66" fill="url(#pfLight)"/>
+            </g>
+            <g class="crease-facet">
+              <polygon points="0,58 92,76 68,148 0,162" fill="url(#pfShade)"/>
+              <polygon points="92,76 178,66 164,132 68,148" fill="url(#pfMid)"/>
+              <polygon points="178,66 254,74 238,146 164,132" fill="url(#pfLight)"/>
+              <polygon points="254,74 340,86 340,164 238,146" fill="url(#pfShade)"/>
+            </g>
+            <g class="crease-facet">
+              <polygon points="0,162 68,148 112,236 0,236" fill="url(#pfLight)"/>
+              <polygon points="68,148 164,132 184,236 112,236" fill="url(#pfShade)"/>
+              <polygon points="164,132 238,146 266,236 184,236" fill="url(#pfMid)"/>
+              <polygon points="238,146 340,164 340,236 266,236" fill="url(#pfLight)"/>
+            </g>
+            <path d="M0,58 L92,76 L178,66 L254,74 L340,86 M128,0 L92,76 L68,148 L112,236 M232,0 L178,66 L164,132 L184,236 M254,74 L238,146 L266,236 M0,162 L68,148 L164,132 L238,146 L340,164" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+          </svg>
+        </div>
+      </div>
+      <p id="poweredByText" class="powered-text mt-8 text-xs sm:text-sm font-black uppercase text-transparent bg-clip-text bg-gradient-to-r from-aiCyan via-white to-aiBlue text-center">POWERED BY FLIXORA</p>
+    </div>
+  </div>
+
+  <!-- STAGE 03: Resource-Aware Intelligent Loading Screen -->
+  <div id="stageLoading" class="intro-stage" aria-live="polite">
+    <div class="w-full max-w-md px-6 space-y-6 text-center">
+      <div class="flex flex-col items-center gap-3">
+        <div class="cinema-aperture">
+          <img id="loaderLogoImg" alt="Flixora" class="w-10 h-auto object-contain opacity-95">
+        </div>
+        <p class="text-[11px] font-bold uppercase tracking-[0.28em] text-aiCyan">Flixora Discovery Engine</p>
+      </div>
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between text-xs font-semibold">
+          <span id="loaderStatusText" class="text-zinc-100 truncate pr-3">Initializing Flixora</span>
+          <span id="loaderPercentText" class="font-mono text-aiCyan font-bold">0%</span>
+        </div>
+        <div class="loader-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="loaderProgressBar">
+          <div id="loaderBarFill" class="loader-fill"></div>
+        </div>
+        <p id="loaderSubText" class="text-[11px] text-zinc-400">Connecting to movie discovery catalog...</p>
+        <p id="loaderMetricsText" class="text-[10px] font-mono text-zinc-500">Resources: 0 tracked</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<canvas id="swarmCanvas" class="hidden" aria-hidden="true"></canvas>
+
+<!-- ========================================================================
+     FLIXORA MOVIE ID FINDER APPLICATION STRUCTURE (WITH INDIAN TV ADDED)
+     ======================================================================== -->
+<header id="mainHeader" class="sticky top-0 inset-x-0 z-50 site-header px-4 py-3 sm:px-8 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 id="headerBrand" class="text-transparent bg-clip-text bg-gradient-to-r from-aiCyan to-aiBlue text-2xl sm:text-3xl font-black tracking-tighter cursor-pointer" onclick="openPage('home')">FLIXORA<span class="text-white text-[11px] tracking-widest ml-1 uppercase font-medium">ID Finder</span></h1>
+    <nav id="mainNav" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <button data-page="home" onclick="openPage('home')" class="nav-link liquid-pill active px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer">Home</button>
+      <button data-page="movie" onclick="openPage('movie')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">Movies</button>
+      <button data-page="tv" onclick="openPage('tv')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">TV Shows</button>
+      <button data-page="indiantv" onclick="openPage('indiantv')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">Indian TV</button>
+      <button data-page="anime" onclick="openPage('anime')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">Anime</button>
+      <button data-page="kdrama" onclick="openPage('kdrama')" class="nav-link liquid-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 whitespace-nowrap cursor-pointer">K-Drama</button>
+    </nav>
+  </div>
+  <div id="headerSearchWrap" class="relative w-full lg:w-[400px]">
+    <div class="liquid-pill rounded-full flex items-center px-3.5 py-2 focus-within:border-aiCyan">
+      <svg class="w-4 h-4 text-aiCyan shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input id="searchInput" type="text" autocomplete="off" placeholder="Search all movies, series, anime..." class="bg-transparent text-white w-full px-2.5 text-sm focus:outline-none placeholder-zinc-400">
+      <span id="searchThinking" class="hidden mr-2 text-xs text-aiCyan animate-pulse">...</span>
+      <button id="clearSearchBtn" type="button" onclick="clearHeaderSearch()" class="hidden text-zinc-400 hover:text-white px-1 cursor-pointer">✕</button>
+    </div>
+  </div>
+</header>
+
+<section id="searchView" class="hidden min-h-screen pt-8 px-4 sm:px-10 pb-14">
+  <div class="flex items-center justify-between gap-3 mb-6">
+    <div><h2 id="globalSearchTitle" class="text-xl sm:text-2xl font-bold">Results</h2><p id="globalSearchScopeLabel" class="text-xs text-aiCyan"></p></div>
+    <button onclick="clearHeaderSearch()" class="liquid-pill text-xs text-aiCyan px-4 py-1.5 rounded-full font-bold cursor-pointer">← Back</button>
+  </div>
+  <div id="searchGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+  <div id="searchEmpty" class="hidden text-center py-20 text-zinc-400">No matching titles found in this section.</div>
+</section>
+
+<section id="errorView" class="hidden min-h-[80vh] flex items-center justify-center px-6 text-center">
+  <div class="liquid-glass modal-glass rounded-3xl p-8 max-w-md space-y-4">
+    <h2 class="text-2xl font-black">Connection Error</h2>
+    <p class="text-zinc-300 text-sm">Unable to load data. Check your internet connection.</p>
+    <button onclick="retryHome()" class="bg-gradient-to-r from-aiCyan to-aiBlue text-black font-black px-7 py-2.5 rounded-full text-sm cursor-pointer">Retry</button>
+  </div>
+</section>
+
+<section id="heroSection" class="relative min-h-[72vh] sm:min-h-[80vh] w-full flex flex-col justify-end pb-10 pt-16 overflow-hidden bg-black">
+  <div id="heroBgImg" class="absolute inset-0 bg-cover bg-center z-0 transition-all duration-500"></div>
+  <div id="heroTrailerWrap" class="absolute inset-0 overflow-hidden pointer-events-none opacity-0 transition-opacity duration-500 z-[1]"></div>
+  <div class="absolute inset-0 bg-gradient-to-t from-dark via-dark/50 to-transparent z-[2] pointer-events-none"></div>
+  <div class="absolute inset-0 bg-gradient-to-r from-dark/90 via-dark/40 to-transparent z-[2] pointer-events-none"></div>
+  <button id="heroSoundBtn" onclick="toggleHeroSound()" title="Sound On / Off" class="absolute top-4 sm:top-6 right-4 sm:right-10 z-20 liquid-pill text-white p-2.5 rounded-full cursor-pointer">
+    <svg id="heroSoundIcon" class="w-5 h-5 text-zinc-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+  </button>
+  <div id="heroTextWrap" class="relative z-10 px-4 sm:px-10 w-full max-w-4xl space-y-3">
+    <span id="heroBadge" class="text-aiCyan font-bold tracking-widest text-xs uppercase block">Flixora AI Pick • #1</span>
+    <h1 id="heroTitle" class="text-3xl sm:text-6xl font-black uppercase text-white leading-none">Loading...</h1>
+    <p id="heroOverview" class="text-xs sm:text-base text-zinc-300 line-clamp-3 max-w-2xl"></p>
+    <div class="pt-2 flex flex-wrap items-center gap-3">
+      <div id="heroButtons"></div>
+      <div id="heroNavPill" class="liquid-pill flex items-center gap-2 rounded-full px-2.5 py-1.5">
+        <button onclick="changeHeroSlide(-1)" class="px-2 text-white hover:text-aiCyan font-bold cursor-pointer">‹</button>
+        <span id="heroCounter" class="text-xs font-mono font-bold">1/10</span>
+        <button onclick="changeHeroSlide(1)" class="px-2 text-white hover:text-aiCyan font-bold cursor-pointer">›</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main id="homeView" class="pb-20"><div id="rowsContainer" class="px-4 sm:px-10 mt-6 space-y-12"></div></main>
+
+<section id="dedicatedView" class="hidden pb-20">
+  <div id="dedRowsWrap" class="px-4 sm:px-10 mt-6 space-y-12"></div>
+  <div id="seeAllWrap" class="hidden px-4 sm:px-10 mt-8 space-y-6">
+    <div class="flex items-center justify-between"><h2 id="seeAllTitle" class="text-xl sm:text-2xl font-black">All Titles</h2><button onclick="closeSeeAll()" class="liquid-pill px-4 py-2 rounded-full text-xs font-bold text-aiCyan cursor-pointer">← Back</button></div>
+    <div id="seeAllGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+    <div class="text-center pt-4"><button id="seeAllLoadMore" onclick="loadMoreSeeAll()" class="liquid-pill px-8 py-3 rounded-full text-xs font-bold text-aiCyan cursor-pointer">Load More</button></div>
+  </div>
+</section>
+
+<div id="detailsModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-0 sm:p-4 bg-black/90 modal-glass">
+  <div id="modalLoader" class="absolute inset-0 flex flex-col items-center justify-center z-50"><div class="ai-loader mb-3"></div><p class="text-aiCyan font-mono text-xs uppercase animate-pulse">Loading Details...</p></div>
+  <div id="modalContent" class="relative bg-[#090d16]/95 border border-white/15 sm:rounded-3xl w-full h-full sm:h-[94vh] max-w-6xl overflow-y-auto custom-scrollbar hidden">
+    <button onclick="closeModal()" class="fixed sm:sticky top-4 right-4 self-end z-50 float-right m-3 liquid-pill px-3 py-1.5 rounded-full hover:bg-aiCyan hover:text-black text-white font-bold cursor-pointer">✕</button>
+    <div id="modalBackdrop" class="h-56 sm:h-[42vh] bg-cover bg-center relative"><div class="absolute inset-0 bg-gradient-to-t from-[#090d16] via-[#090d16]/65 to-transparent"></div></div>
+    <div class="p-5 sm:p-10 -mt-28 sm:-mt-36 relative z-10 space-y-9">
+      <div class="flex flex-col md:flex-row gap-6 items-start">
+        <div class="glow-ring clip-portrait shrink-0"><img id="modalPoster" class="w-32 sm:w-52 clip-portrait object-cover bg-zinc-900"></div>
+        <div class="flex-1 space-y-3.5 w-full">
+          <div><h1 id="modalTitle" class="text-2xl sm:text-4xl font-black uppercase"></h1><p id="modalTagline" class="text-aiCyan italic text-sm"></p></div>
+          <div class="flex flex-wrap gap-2 text-xs font-semibold"><span id="modalYear" class="liquid-pill px-3 py-1 rounded-full"></span><span id="modalRuntime" class="liquid-pill px-3 py-1 rounded-full"></span><span id="modalMaturity" class="px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/35"></span><span id="modalLangPill" class="liquid-pill px-3 py-1 rounded-full uppercase"></span><span id="modalType" class="px-3 py-1 rounded-full bg-aiCyan/15 text-aiCyan border border-aiCyan/30 uppercase"></span></div>
+          <div class="flex flex-wrap gap-2.5 text-xs"><span class="bg-yellow-500/15 text-yellow-400 px-3 py-1.5 rounded-xl border border-yellow-500/30 font-bold">★ <span id="modalRating"></span> TMDB</span><span id="modalVotesBadge" class="liquid-glass px-3 py-1.5 rounded-xl text-zinc-300"></span></div>
+          <div id="modalGenres" class="flex flex-wrap gap-2"></div>
+          <div class="flex flex-wrap gap-3 pt-1">
+            <button onclick="copyPrimaryId()" class="bg-gradient-to-r from-aiCyan to-aiBlue text-black font-black px-5 py-2.5 rounded-full text-xs sm:text-sm cursor-pointer"><span id="modalSingleCopyText">Copy ID</span></button>
+            <button onclick="shareCurrentMedia()" class="liquid-pill px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold cursor-pointer">Share</button>
+          </div>
+        </div>
+      </div>
+      <section class="liquid-glass rounded-2xl p-5 space-y-2.5"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan">Detailed Storyline & Plot</h3><p id="modalOverview" class="text-zinc-100 leading-relaxed text-sm sm:text-base font-medium"></p><div id="modalWikiPlot" class="text-zinc-300 leading-relaxed text-xs sm:text-sm space-y-2"></div><div id="modalStoryThemes" class="flex flex-wrap gap-1.5"></div><p id="modalExtendedStory" class="text-xs text-zinc-400"></p></section>
+      <section class="liquid-glass rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+          <div><div class="flex items-center gap-2"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan">Where to Watch (OTT & Theatres)</h3><span id="ottCountryCountBadge" class="bg-aiCyan/15 text-aiCyan border border-aiCyan/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold"></span></div></div>
+          <select id="ottRegionSelect" onchange="renderOttProviders()" class="bg-zinc-900 border border-white/20 text-white text-xs font-bold rounded-xl px-3 py-2 max-w-[240px] cursor-pointer"></select>
+        </div>
+        <div id="theaterStatusBox" class="hidden"></div>
+        <div id="ottProvidersWrap" class="space-y-4"></div>
+      </section>
+      <section class="space-y-3"><div class="flex flex-wrap justify-between gap-2 border-b border-white/10 pb-2"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan">Top Cast & Crew</h3><span id="modalCrewInfo" class="text-xs text-zinc-300"></span></div><div id="modalCast" class="flex gap-4 overflow-x-auto custom-scrollbar pb-3"></div></section>
+      <section id="trailerSection" class="hidden space-y-3">
+        <div class="flex justify-between border-b border-white/10 pb-2"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan">Trailers & Videos</h3><a id="modalYtFallback" href="#" target="_blank" rel="noopener noreferrer" class="text-xs text-aiCyan hover:underline">Open on YouTube ↗</a></div>
+        <div class="aspect-video w-full rounded-2xl overflow-hidden border border-white/15 bg-black relative"><div id="modalTrailerHost" class="w-full h-full"></div><div id="modalTrailerErrBox" class="hidden absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-4 gap-3"><p class="text-sm text-zinc-300">Trailer embed restricted.</p><a id="modalYtErrBtn" href="#" target="_blank" rel="noopener noreferrer" class="bg-aiCyan text-black font-bold px-5 py-2 rounded-full text-xs">Watch on YouTube ↗</a></div></div>
+        <div id="modalVideoCarousel" class="flex gap-3 overflow-x-auto custom-scrollbar pb-2"></div>
+      </section>
+      <section id="gallerySection" class="hidden space-y-3"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan border-b border-white/10 pb-2">Media Gallery</h3><div id="modalGallery" class="flex gap-3 overflow-x-auto custom-scrollbar pb-3"></div></section>
+      <section class="liquid-glass rounded-2xl p-5 space-y-3"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan border-b border-white/10 pb-2">Technical & Box Office Info</h3><div id="modalTechGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs"></div></section>
+      <section class="space-y-3"><div class="flex justify-between border-b border-white/10 pb-2"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan">User Reviews</h3><button id="moreReviewsBtn" onclick="loadAllReviews()" class="hidden liquid-pill px-3.5 py-1 rounded-full text-xs font-bold text-aiCyan cursor-pointer">More Reviews</button></div><div id="modalReviews" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div></section>
+      <section id="similarSection" class="hidden space-y-3"><div class="flex justify-between border-b border-white/10 pb-2"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan">Similar & Recommended</h3><button onclick="refreshSimilar()" class="liquid-pill px-3.5 py-1 rounded-full text-xs font-bold text-aiCyan cursor-pointer">↻ Refresh</button></div><div id="modalSimilar" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5"></div></section>
+      <section class="liquid-glass rounded-2xl p-5 space-y-3"><h3 class="font-bold uppercase tracking-widest text-xs text-aiCyan border-b border-white/10 pb-2">Dubbed & Audio Languages</h3><div id="modalDubInfo" class="space-y-3 text-xs"></div></section>
+    </div>
+  </div>
+</div>
+
+<div id="lightboxModal" onclick="this.classList.add('hidden')" class="fixed inset-0 z-[120] hidden bg-black/95 flex items-center justify-center p-4 cursor-zoom-out"><img id="lightboxImg" class="max-h-[90vh] max-w-[95vw] rounded-xl object-contain"></div>
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[140] liquid-glass text-aiCyan px-5 py-2 rounded-full text-xs font-bold opacity-0 pointer-events-none transition-all duration-300"></div>
+
+<script>
+/* ==========================================================================
+   8. USER-PROVIDED ASSET CONFIGURATION (EASILY REPLACEABLE)
+   ========================================================================== */
+const FLIXORA_ASSETS = Object.freeze({
+  movieIdFinderLogo: 'https://i.ibb.co/wNkMGsms/IMG-80fb3083-ba3a-431a-88de-587a8ba7e963.jpg',
+  flixoraLogo: 'https://i.ibb.co/8DW8gwrD/72d018c7c0e6909c13158fe402b62a9f2c2ddb8ae70b8a4fb0e2844e1ba4671c.png'
+});
+
+/* ==========================================================================
+   9. APPLICATION CORE & TMDB INTEGRATION (WITH INDIAN TV SHOWS)
+   ========================================================================== */
+const API='ef3c9e207a5c0800c9f5d1b9f13da277',BASE='https://api.themoviedb.org/3',IMG='https://image.tmdb.org/t/p/w500',ORG='https://image.tmdb.org/t/p/original';
+const FALLBACK_POSTER="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'%3E%3Crect width='300' height='450' fill='%23111827'/%3E%3Ctext x='50%25' y='50%25' fill='%234b5563' font-family='sans-serif' font-size='18' text-anchor='middle' dy='.3em'%3ENo Image%3C/text%3E%3C/svg%3E";
+const $=id=>document.getElementById(id),regName=new Intl.DisplayNames(['en'],{type:'region'}),langName=new Intl.DisplayNames(['en'],{type:'language'});
+const gLang=c=>{try{return langName.of(c)||c}catch{return c?.toUpperCase()||'EN'}},gReg=c=>{try{return regName.of(c)||c}catch{return c}},flag=c=>c.toUpperCase().replace(/./g,x=>String.fromCodePoint(127397+x.charCodeAt()));
+const fmt$=n=>n>0?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n):'N/A',fmtT=m=>m?`${m/60|0}h ${m%60}m`:'N/A';
+const IN_LANGS=new Set(['hi','ta','te','ml','kn','bn','mr','pa','gu']);
+const isAni=i=>i.original_language==='ja'&&i.genre_ids?.includes(16),pureM=l=>(l||[]).filter(i=>i.poster_path&&!isAni(i)),pureT=l=>(l||[]).filter(i=>i.poster_path&&!isAnimeOrKo(i));
+function isAnimeOrKo(i){return isAni(i)||i.original_language==='ko'}
+function isIndianTV(i){return i.poster_path&&!isAni(i)&&(i.origin_country?.includes('IN')||IN_LANGS.has(i.original_language))}
+
+let page='home',mId,mType,imdbId='',primId='',mData,revs=[],revPages=1,revExp=0,simPool=[],simOff=0;
+let ytReady=0,heroP=null,heroReady=0,modP=null,slides=[],homeTop=[],hIdx=0,trTry=0,muted=1,fbTmr=null,playChkTmr=null,autoScrollTimer=null,scrollPause=0,sSeq=0,obs=null,saEp,saType,saPg=1,saScope;
+let heroCanAutoPlay=false;
+let homeEarlyRowsPromise=Promise.resolve();
+
+window.onYouTubeIframeAPIReady=()=>{ytReady=1;if(heroCanAutoPlay&&slides.length)playHero(hIdx)};
+(()=>{if(window.YT?.Player)ytReady=1;else{let s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)}})();
+
+const HOME_R=[
+ ['Global Top 10 Trending','/trending/all/day',null,'rank'],
+ ['Recommended For You','/trending/movie/week','movie','wide','movie'],
+ ['Indian TV Shows & Web Series','/discover/tv?with_origin_country=IN&without_genres=16&sort_by=popularity.desc','tv','wide'],
+ ['Because You Watched Cinema','/discover/movie?without_genres=16&sort_by=vote_average.desc&vote_count.gte=1200','movie','slant','movie'],
+ ['Popular Blockbusters','/discover/movie?without_genres=16&sort_by=popularity.desc','movie','portrait','movie'],
+ ['Upcoming Releases','/movie/upcoming','movie','leaf','movie'],
+ ['Now Playing Theatres','/movie/now_playing','movie','chamfer','movie'],
+ ['Popular Web Series','/discover/tv?without_genres=16&without_original_language=ko&sort_by=popularity.desc','tv','arch','tv'],
+ ['Top Rated TV Series','/discover/tv?without_genres=16&without_original_language=ko&sort_by=vote_average.desc&vote_count.gte=400','tv','wide','tv'],
+ ['Top Rated Anime','/discover/tv?with_genres=16&with_original_language=ja&sort_by=vote_average.desc&vote_count.gte=300','tv','chamfer'],
+ ['Popular Anime Movies','/discover/movie?with_genres=16&with_original_language=ja&sort_by=popularity.desc','movie','slant'],
+ ['Trending K-Dramas','/discover/tv?with_original_language=ko&sort_by=popularity.desc','tv','wide'],
+ ['Top K-Dramas','/discover/tv?with_original_language=ko&sort_by=vote_average.desc&vote_count.gte=150','tv','portrait'],
+ ['Action & Adventure','/discover/movie?with_genres=28,12&without_genres=16','movie','slant'],
+ ['Sci-Fi & Mind-Bending','/discover/movie?with_genres=878&without_genres=16','movie','chamfer'],
+ ['Horror & Supernatural','/discover/movie?with_genres=27&without_genres=16','movie','portrait'],
+ ['Dark Thrillers','/discover/movie?with_genres=53&without_genres=16','movie','arch'],
+ ['Comedy & Feel-Good','/discover/movie?with_genres=35&without_genres=16','movie','leaf'],
+ ['Crime & Mystery','/discover/movie?with_genres=80,9648&without_genres=16','movie','wide'],
+ ['Romance Stories','/discover/movie?with_genres=10749&without_genres=16','movie','slant'],
+ ['Acclaimed Drama','/discover/movie?with_genres=18&without_genres=16&sort_by=vote_average.desc&vote_count.gte=900','movie','portrait'],
+ ['Indian Cinema Hits','/discover/movie?with_origin_country=IN&without_genres=16','movie','leaf'],
+ ['Documentaries','/discover/movie?with_genres=99','movie','chamfer']
+];
+const DED={
+ movie:[
+  ['Top 10 Best Movies','/trending/movie/day','movie','rank'],['Recommended For You','/discover/movie?without_genres=16&sort_by=popularity.desc','movie','wide'],
+  ['Because You Watched Cinema','/discover/movie?without_genres=16&sort_by=vote_average.desc&vote_count.gte=1200','movie','slant'],['Now Playing Theatres','/movie/now_playing','movie','portrait'],
+  ['Upcoming Movies','/movie/upcoming','movie','leaf'],['All-Time Classics','/discover/movie?without_genres=16&primary_release_date.lte=2005-01-01&sort_by=vote_average.desc&vote_count.gte=1500','movie','arch'],
+  ['Action & Adrenaline','/discover/movie?with_genres=28&without_genres=16','movie','chamfer'],['Adventure & Expeditions','/discover/movie?with_genres=12&without_genres=16','movie','wide'],
+  ['Sci-Fi Worlds','/discover/movie?with_genres=878&without_genres=16','movie','leaf'],['Fantasy & Magic','/discover/movie?with_genres=14&without_genres=16','movie','slant'],
+  ['Dark Thrillers','/discover/movie?with_genres=53&without_genres=16','movie','arch'],['Horror & Supernatural','/discover/movie?with_genres=27&without_genres=16','movie','wide'],
+  ['Comedy & Laughs','/discover/movie?with_genres=35&without_genres=16','movie','slant'],['Crime & Gangster','/discover/movie?with_genres=80&without_genres=16','movie','chamfer'],
+  ['Mystery Twists','/discover/movie?with_genres=9648&without_genres=16','movie','portrait'],['Epic Drama','/discover/movie?with_genres=18&without_genres=16&sort_by=vote_average.desc&vote_count.gte=1000','movie','arch'],
+  ['Romance','/discover/movie?with_genres=10749&without_genres=16','movie','leaf'],['War & History','/discover/movie?with_genres=10752,36&without_genres=16','movie','wide'],
+  ['Indian Cinema','/discover/movie?with_origin_country=IN&without_genres=16','movie','portrait'],['Music & Biopic','/discover/movie?with_genres=10402&without_genres=16','movie','chamfer'],
+  ['Documentaries','/discover/movie?with_genres=99','movie','slant']
+ ],
+ tv:[
+  ['Top 10 Binge Series','/trending/tv/day','tv','rank'],['Recommended Series','/discover/tv?without_genres=16&without_original_language=ko&sort_by=popularity.desc','tv','wide'],
+  ['Indian Web Series & TV','/discover/tv?with_origin_country=IN&without_genres=16&sort_by=popularity.desc','tv','chamfer'],
+  ['Because You Watched Shows','/discover/tv?without_genres=16&without_original_language=ko&sort_by=vote_average.desc&vote_count.gte=400','tv','slant'],['On The Air','/tv/on_the_air','tv','portrait'],
+  ['Airing Today','/tv/airing_today','tv','leaf'],['Greatest Of All Time','/discover/tv?without_genres=16&without_original_language=ko&sort_by=vote_average.desc&vote_count.gte=1500','tv','arch'],
+  ['Crime & Detective','/discover/tv?with_genres=80&without_genres=16&without_original_language=ko','tv','chamfer'],['Sci-Fi & Fantasy','/discover/tv?with_genres=10765&without_genres=16&without_original_language=ko','tv','wide'],
+  ['Mystery & Mind Games','/discover/tv?with_genres=9648&without_genres=16&without_original_language=ko','tv','arch'],['Action & Adventure','/discover/tv?with_genres=10759&without_genres=16&without_original_language=ko','tv','slant'],
+  ['Comedy Sitcoms','/discover/tv?with_genres=35&without_genres=16&without_original_language=ko','tv','portrait'],['Acclaimed Dramas','/discover/tv?with_genres=18&without_genres=16&without_original_language=ko&sort_by=vote_average.desc&vote_count.gte=400','tv','leaf'],
+  ['British Crime & Drama','/discover/tv?with_origin_country=GB&without_genres=16','tv','wide'],
+  ['Spanish Series','/discover/tv?with_original_language=es&without_genres=16','tv','slant'],['War & Politics','/discover/tv?with_genres=10768&without_genres=16','tv','portrait'],
+  ['Family & Youth','/discover/tv?with_genres=10751&without_genres=16','tv','arch'],['Docuseries','/discover/tv?with_genres=99','tv','leaf'],
+  ['Reality & Games','/discover/tv?with_genres=10764','tv','chamfer'],['Talk & Specials','/discover/tv?with_genres=10767','tv','wide']
+ ],
+ indiantv:[
+  ['Top 10 Indian TV & Web Series','/discover/tv?with_origin_country=IN&without_genres=16&sort_by=popularity.desc','tv','rank'],
+  ['Top Rated Indian Shows','/discover/tv?with_origin_country=IN&without_genres=16&sort_by=vote_average.desc&vote_count.gte=25','tv','wide'],
+  ['Hindi TV & Web Series','/discover/tv?with_origin_country=IN&with_original_language=hi&without_genres=16&sort_by=popularity.desc','tv','slant'],
+  ['Trending Indian Originals','/discover/tv?with_origin_country=IN&first_air_date.gte=2023-01-01&without_genres=16&sort_by=popularity.desc','tv','portrait'],
+  ['Indian Crime & Thrillers','/discover/tv?with_origin_country=IN&with_genres=80,9648&without_genres=16','tv','chamfer'],
+  ['Indian Drama & Serials','/discover/tv?with_origin_country=IN&with_genres=18&without_genres=16','tv','arch'],
+  ['Indian Comedy & Sitcoms','/discover/tv?with_origin_country=IN&with_genres=35&without_genres=16','tv','leaf'],
+  ['Indian Action & Spy','/discover/tv?with_origin_country=IN&with_genres=10759&without_genres=16','tv','wide'],
+  ['Indian Family Shows','/discover/tv?with_origin_country=IN&with_genres=10751&without_genres=16','tv','portrait'],
+  ['Indian Sci-Fi & Mytho','/discover/tv?with_origin_country=IN&with_genres=10765&without_genres=16','tv','slant'],
+  ['Tamil TV & Web Series','/discover/tv?with_origin_country=IN&with_original_language=ta&without_genres=16','tv','chamfer'],
+  ['Telugu TV & Web Series','/discover/tv?with_origin_country=IN&with_original_language=te&without_genres=16','tv','leaf'],
+  ['Malayalam & Bengali Series','/discover/tv?with_origin_country=IN&with_original_language=ml|bn&without_genres=16','tv','arch'],
+  ['Indian Reality & Game Shows','/discover/tv?with_origin_country=IN&with_genres=10764','tv','wide'],
+  ['Indian Docuseries','/discover/tv?with_origin_country=IN&with_genres=99','tv','portrait'],
+  ['Classic Indian TV','/discover/tv?with_origin_country=IN&first_air_date.lte=2018-01-01&without_genres=16&sort_by=vote_average.desc&vote_count.gte=10','tv','chamfer']
+ ],
+ anime:[
+  ['Top 10 All-Time Anime','/discover/tv?with_genres=16&with_original_language=ja&sort_by=vote_average.desc&vote_count.gte=400','tv','rank'],
+  ['Recommended Anime','/discover/tv?with_genres=16&with_original_language=ja&sort_by=popularity.desc','tv','wide'],
+  ['Shonen Action','/discover/tv?with_genres=16,10759&with_original_language=ja','tv','slant'],['Isekai & Fantasy','/discover/tv?with_genres=16,10765&with_original_language=ja','tv','portrait'],
+  ['Dark & Mystery','/discover/tv?with_genres=16,9648&with_original_language=ja','tv','chamfer'],['Best Anime Movies','/discover/movie?with_genres=16&with_original_language=ja&sort_by=vote_average.desc&vote_count.gte=300','movie','leaf'],
+  ['Slice of Life & Comedy','/discover/tv?with_genres=16,35&with_original_language=ja','tv','arch'],['Emotional Drama','/discover/tv?with_genres=16,18&with_original_language=ja&sort_by=vote_average.desc&vote_count.gte=250','tv','wide'],
+  ['Popular Anime Movies','/discover/movie?with_genres=16&with_original_language=ja','movie','slant'],['Crime & Psychological','/discover/tv?with_genres=16,80&with_original_language=ja','tv','chamfer'],
+  ['Retro Classics (Pre-2012)','/discover/tv?with_genres=16&with_original_language=ja&first_air_date.lte=2012-01-01&sort_by=vote_average.desc&vote_count.gte=200','tv','portrait'],
+  ['Golden Era (2013-2019)','/discover/tv?with_genres=16&with_original_language=ja&first_air_date.gte=2013-01-01&first_air_date.lte=2019-12-31','tv','leaf'],
+  ['Modern Hits (2020+)','/discover/tv?with_genres=16&with_original_language=ja&first_air_date.gte=2020-01-01','tv','arch'],['New Airing Anime','/discover/tv?with_genres=16&with_original_language=ja&first_air_date.gte=2025-01-01','tv','wide'],
+  ['Action Anime Movies','/discover/movie?with_genres=16,28&with_original_language=ja','movie','slant'],['Sci-Fi & Mecha Films','/discover/movie?with_genres=16,878&with_original_language=ja','movie','chamfer'],
+  ['Fantasy Anime Films','/discover/movie?with_genres=16,14&with_original_language=ja','movie','portrait'],['Horror Anime Films','/discover/movie?with_genres=16,27&with_original_language=ja','movie','leaf'],
+  ['Family Anime','/discover/tv?with_genres=16,10751&with_original_language=ja','tv','arch'],['Hidden Gems','/discover/tv?with_genres=16&with_original_language=ja&vote_count.gte=80&vote_count.lte=350&sort_by=vote_average.desc','tv','wide']
+ ],
+ kdrama:[
+  ['Top 10 K-Dramas','/discover/tv?with_original_language=ko&sort_by=vote_average.desc&vote_count.gte=150','tv','rank'],
+  ['Recommended K-Dramas','/discover/tv?with_original_language=ko&sort_by=popularity.desc','tv','wide'],['Romance & Drama','/discover/tv?with_original_language=ko&with_genres=18','tv','slant'],
+  ['Action & Revenge','/discover/tv?with_original_language=ko&with_genres=10759','tv','portrait'],['Crime & Legal','/discover/tv?with_original_language=ko&with_genres=80','tv','chamfer'],
+  ['Fantasy & Supernatural','/discover/tv?with_original_language=ko&with_genres=10765','tv','leaf'],['Mystery & Thriller','/discover/tv?with_original_language=ko&with_genres=9648','tv','arch'],
+  ['Rom-Com Hits','/discover/tv?with_original_language=ko&with_genres=35','tv','wide'],['Family & Life','/discover/tv?with_original_language=ko&with_genres=10751','tv','slant'],
+  ['New K-Dramas (2024+)','/discover/tv?with_original_language=ko&first_air_date.gte=2024-01-01','tv','portrait'],['Classic K-Dramas','/discover/tv?with_original_language=ko&first_air_date.lte=2019-01-01&sort_by=vote_average.desc&vote_count.gte=100','tv','chamfer'],
+  ['Korean Thriller Movies','/discover/movie?with_original_language=ko&with_genres=53','movie','leaf'],['Top Rated Korean Films','/discover/movie?with_original_language=ko&sort_by=vote_average.desc&vote_count.gte=250','movie','arch'],
+  ['Trending Korean Films','/discover/movie?with_original_language=ko','movie','wide'],['Korean Action','/discover/movie?with_original_language=ko&with_genres=28','movie','slant'],
+  ['Korean Horror & Zombie','/discover/movie?with_original_language=ko&with_genres=27','movie','portrait'],['Korean Crime Noir','/discover/movie?with_original_language=ko&with_genres=80','movie','chamfer'],
+  ['Korean Romance Films','/discover/movie?with_original_language=ko&with_genres=10749','movie','leaf'],['Korean Sci-Fi','/discover/movie?with_original_language=ko&with_genres=878','movie','arch'],
+  ['Korean Comedy Films','/discover/movie?with_original_language=ko&with_genres=35','movie','wide']
+ ]
+};
+
+const api=async(ep,onStream)=>{
+  try{
+    let r=await fetch(`${BASE}${ep}${ep.includes('?')?'&':'?'}api_key=${API}`);
+    if(!r.ok)return null;
+    if(onStream&&r.body?.getReader){
+      const total=Number(r.headers.get('content-length'))||0;
+      const reader=r.body.getReader(),chunks=[];let loaded=0;
+      while(true){
+        const{done,value}=await reader.read();
+        if(done)break;
+        chunks.push(value);loaded+=value.length;
+        onStream(total?Math.min(1,loaded/total):Math.min(.9,loaded/24000));
+      }
+      onStream(1);
+      const blob=new Blob(chunks);
+      return JSON.parse(await blob.text());
+    }
+    return await r.json();
+  }catch{return null}
+};
+
+let tTmr;const toast=m=>{let t=$('toast');t.innerText=m;t.classList.remove('opacity-0');clearTimeout(tTmr);tTmr=setTimeout(()=>t.classList.add('opacity-0'),2200)};
+function copyTextSafe(txt,msg){
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast(msg)).catch(()=>fallbackCopy(txt,msg));
+  }else fallbackCopy(txt,msg);
+}
+function fallbackCopy(txt,msg){
+  const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast(msg)}catch{toast('Copy failed')}
+  ta.remove();
+}
+
+function resetObs(){if(obs)obs.disconnect();obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){obs.unobserve(e.target);e.target._fn?.()}}),{rootMargin:'450px 0px'})}
+
+function card(it,ft,sh='portrait',rk=null,grid=0){
+  let tp=ft||it.media_type||(it.first_air_date?'tv':'movie'),tt=it.title||it.name||'',d=document.createElement('div');
+  let cl={portrait:'clip-portrait',rank:'clip-portrait',wide:'clip-wide',slant:'clip-slant',chamfer:'clip-chamfer',arch:'clip-arch',leaf:'clip-leaf'}[sh]||'clip-portrait';
+  d.onclick=()=>openDetails(it.id,tp);
+  if(grid){d.className=`glow-ring ${cl} w-full h-[210px] sm:h-[245px]`;d.innerHTML=`<div class="w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${IMG}${it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover"></div>`;return d}
+  if(sh==='wide'){d.className=`glow-ring ${cl} shrink-0 w-[240px] sm:w-[275px] h-[140px] sm:h-[158px]`;d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${IMG}${it.backdrop_path||it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover"><div class="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black via-black/75 to-transparent flex justify-between gap-2"><p class="text-xs font-bold truncate">${tt}</p><span class="text-[10px] text-aiCyan font-bold">★ ${it.vote_average?it.vote_average.toFixed(1):'NR'}</span></div></div>`;return d}
+  if(sh==='rank'){d.className=`glow-ring ${cl} relative shrink-0 w-[134px] sm:w-[164px] h-[198px] sm:h-[244px]`;d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><span class="absolute top-2 left-2 z-10 bg-black/85 text-aiCyan border border-aiCyan/60 text-xs font-black px-2 py-0.5 rounded-md">#${rk+1}</span><img src="${IMG}${it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover"></div>`;return d}
+  d.className=`glow-ring ${cl} shrink-0 ${sh==='slant'?'w-[148px] sm:w-[174px] h-[205px] sm:h-[240px]':'w-[134px] sm:w-[164px] h-[198px] sm:h-[242px]'}`;
+  d.innerHTML=`<div class="relative w-full h-full ${cl} overflow-hidden bg-zinc-900"><img src="${IMG}${it.poster_path}" loading="lazy" decoding="async" class="w-full h-full object-cover">${sh==='slant'?`<div class="absolute inset-x-0 bottom-0 p-2.5 pl-4 bg-gradient-to-t from-black/95 to-transparent"><p class="text-[11px] font-bold truncate">${tt}</p></div>`:''}</div>`;
+  return d;
+}
+
+function fillRow(id,items,ft,sh,grid=0){let c=$(id);if(!c)return;c.innerHTML='';const frag=document.createDocumentFragment();items.forEach((x,i)=>{if(x.poster_path)frag.appendChild(card(x,ft,sh,i,grid))});c.appendChild(frag)}
+
+async function loadRow(id,url,tp,sh,pure){
+  let d=await api(url),el=$(id);if(!el)return;if(!d?.results){el.innerHTML='';return}
+  let it=d.results.filter(i=>i.poster_path);
+  if(pure==='movie')it=pureM(it);else if(pure==='tv')it=pureT(it);
+  fillRow(id,it,tp,sh);
+}
+
+let homeInitPromise=null;
+async function initHome(onProgress){
+  let tr=await api('/trending/all/day',onProgress);
+  if(!tr?.results){
+    $('homeView').classList.add('hidden');$('heroSection').classList.add('hidden');$('errorView').classList.remove('hidden');
+    return false;
+  }
+  $('errorView').classList.add('hidden');
+  $('heroSection').classList.remove('hidden');
+  if(page==='home')$('homeView').classList.remove('hidden');
+  homeTop=tr.results.filter(i=>i.poster_path&&(i.media_type==='movie'||i.media_type==='tv')).slice(0,10);
+  slides=homeTop;
+  renderHome();
+  showSlide(0);
+  return true;
+}
+
+function renderHome(){
+  resetObs();let c=$('rowsContainer');c.innerHTML='';
+  const earlyPromises=[];
+  HOME_R.forEach((r,i)=>{
+    let s=document.createElement('section');
+    s.className='row-section';
+    s.innerHTML=`<h2 class="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">${r[0]}${i===0?'<span class="text-aiCyan text-xs bg-aiCyan/10 px-2 py-0.5 rounded border border-aiCyan/20">Auto-Scroll</span>':''}</h2><div id="${i===0?'homeTop10':'hr_'+i}" class="flex gap-4 sm:gap-6 overflow-x-auto custom-scrollbar pb-5 pt-2 px-1 ${i===0?'scroll-smooth':''}"><div class="w-[134px] h-[198px] rounded-xl bg-white/5 animate-pulse shrink-0"></div><div class="w-[134px] h-[198px] rounded-xl bg-white/5 animate-pulse shrink-0"></div></div>`;
+    c.appendChild(s);
+    let cid=i===0?'homeTop10':'hr_'+i;
+    if(i===0){fillRow(cid,homeTop,null,r[3]);autoScroll()}
+    else if(i<6){
+      const p=loadRow(cid,r[1],r[2],r[3],r[4]);
+      if(i<=2)earlyPromises.push(p);
+    }else{s._fn=()=>loadRow(cid,r[1],r[2],r[3],r[4]);obs.observe(s)}
+  });
+  homeEarlyRowsPromise=Promise.allSettled(earlyPromises);
+}
+
+function autoScroll(){
+  clearInterval(autoScrollTimer);
+  let l=$('homeTop10');if(!l)return;
+  l.onmouseenter=()=>scrollPause=1;l.onmouseleave=()=>scrollPause=0;
+  autoScrollTimer=setInterval(()=>{
+    if(!scrollPause&&heroCanAutoPlay&&page==='home'&&$('searchView').classList.contains('hidden')&&$('detailsModal').classList.contains('hidden')&&!document.hidden){
+      l.scrollLeft+l.clientWidth>=l.scrollWidth-10?l.scrollTo({left:0,behavior:'smooth'}):l.scrollBy({left:190,behavior:'smooth'});
+    }
+  },3200);
+}
+
+async function openPage(p){
+  page=p;document.querySelectorAll('.nav-link').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
+  $('searchInput').placeholder={
+    home:'Search all movies, series, anime...',
+    movie:'Search ONLY Movies...',
+    tv:'Search ONLY TV & Web Series...',
+    indiantv:'Search ONLY Indian TV & Web Series...',
+    anime:'Search ONLY Anime...',
+    kdrama:'Search ONLY K-Drama...'
+  }[p];
+  $('searchInput').value='';$('clearSearchBtn').classList.add('hidden');$('searchView').classList.add('hidden');$('errorView').classList.add('hidden');$('heroSection').classList.remove('hidden');
+  if(p==='home'){
+    $('dedicatedView').classList.add('hidden');$('homeView').classList.remove('hidden');scrollTo(0,0);
+    if(homeTop.length){slides=homeTop;showSlide(0);renderHome()}else{initHome()}
+    return;
+  }
+  $('homeView').classList.add('hidden');$('dedicatedView').classList.remove('hidden');$('seeAllWrap').classList.add('hidden');$('dedRowsWrap').classList.remove('hidden');scrollTo(0,0);
+  let rows=DED[p],w=$('dedRowsWrap');resetObs();w.innerHTML='';
+  rows.forEach((r,i)=>{
+    let s=document.createElement('section'),rid=`dr_${p}_${i}`;
+    s.className='row-section';
+    s.innerHTML=`<div class="flex items-center justify-between mb-4"><h3 class="text-lg sm:text-xl font-bold">${r[0]}</h3><button onclick="openSeeAll('${r[0].replace(/'/g,"\\'")}','${r[1]}','${r[2]}','${p}')" class="liquid-pill px-3.5 py-1 rounded-full text-xs font-bold text-aiCyan cursor-pointer">See All ›</button></div><div id="${rid}" class="flex gap-4 sm:gap-6 overflow-x-auto custom-scrollbar pb-5 pt-2 px-1"><div class="w-[134px] h-[198px] rounded-xl bg-white/5 animate-pulse shrink-0"></div><div class="w-[134px] h-[198px] rounded-xl bg-white/5 animate-pulse shrink-0"></div></div>`;
+    w.appendChild(s);
+    if(i>=5){s._fn=()=>loadRow(rid,r[1],r[2],r[3],p);obs.observe(s)}
+  });
+  let f5=await Promise.all(rows.slice(0,5).map(r=>api(r[1])));if(page!==p)return;
+  let top=f5[0]?.results||[];if(p==='movie')top=pureM(top);else if(p==='tv')top=pureT(top);else if(p==='indiantv')top=top.filter(x=>x.poster_path&&!isAni(x));
+  top=top.filter(i=>i.poster_path).slice(0,10).map(i=>({...i,media_type:rows[0][2]}));
+  if(top.length){slides=top;showSlide(0)}
+  f5.forEach((d,i)=>{if(!d?.results)return;let it=d.results.filter(x=>x.poster_path);if(p==='movie')it=pureM(it);else if(p==='tv')it=pureT(it);else if(p==='indiantv')it=it.filter(x=>!isAni(x));fillRow(`dr_${p}_${i}`,it,rows[i][2],rows[i][3])});
+}
+
+async function openSeeAll(t,ep,tp,sc){saEp=ep;saType=tp;saScope=sc;saPg=1;$('dedRowsWrap').classList.add('hidden');$('seeAllWrap').classList.remove('hidden');$('seeAllTitle').innerText=t;$('seeAllGrid').innerHTML='';await fetchSeeAll();scrollTo({top:380,behavior:'smooth'})}
+async function fetchSeeAll(){let d=await api(`${saEp}${saEp.includes('?')?'&':'?'}page=${saPg}`),g=$('seeAllGrid'),it=(d?.results||[]).filter(i=>i.poster_path);if(saScope==='movie')it=pureM(it);else if(saScope==='tv')it=pureT(it);else if(saScope==='indiantv')it=it.filter(x=>!isAni(x));it.forEach(x=>g.appendChild(card(x,saType,'portrait',null,1)));$('seeAllLoadMore').classList.toggle('hidden',saPg>=(d?.total_pages||1))}
+function loadMoreSeeAll(){saPg++;fetchSeeAll()}
+function closeSeeAll(){$('seeAllWrap').classList.add('hidden');$('dedRowsWrap').classList.remove('hidden')}
+
+function changeHeroSlide(dir){if(slides.length)showSlide((hIdx+dir+slides.length)%slides.length)}
+
+function destroyHeroPlayer(){
+  clearTimeout(playChkTmr);
+  if(heroP){try{heroP.destroy()}catch{}heroP=null}
+  heroReady=0;
+  $('heroTrailerWrap').innerHTML='';
+  $('heroTrailerWrap').classList.remove('opacity-100');
+  $('heroTrailerWrap').classList.add('opacity-0');
+}
+
+function showSlide(i){
+  if(!slides.length)return;
+  clearTimeout(fbTmr);clearTimeout(playChkTmr);
+  hIdx=i;trTry=0;
+  let it=slides[hIdx],tp=it.media_type||(it.first_air_date?'tv':'movie');
+  $('heroBgImg').style.backgroundImage=`url(${ORG}${it.backdrop_path||it.poster_path})`;
+  $('heroBadge').innerText=`${{home:'Flixora AI Pick',movie:'Best Movie',tv:'Best Series',indiantv:'Best Indian TV',anime:'Best Anime',kdrama:'Best K-Drama'}[page]} • #${hIdx+1}`;
+  $('heroCounter').innerText=`${hIdx+1}/${slides.length}`;
+  $('heroTitle').innerText=it.title||it.name;
+  $('heroTitle').dataset.fullText=it.title||it.name;
+  $('heroOverview').innerText=it.overview||'';
+  $('heroButtons').innerHTML=`<button onclick="openDetails(${it.id},'${tp}')" class="bg-gradient-to-r from-aiCyan to-aiBlue text-black font-black px-6 sm:px-8 py-3 rounded-full shadow-[0_0_15px_rgba(0,242,254,.4)] hover:scale-105 transition text-xs sm:text-sm cursor-pointer">VIEW AI INSIGHTS</button>`;
+  if(heroCanAutoPlay)playHero(hIdx);
+}
+
+async function playHero(i){
+  clearTimeout(fbTmr);clearTimeout(playChkTmr);
+  let it=slides[i];if(!it||!heroCanAutoPlay)return;
+  let w=$('heroTrailerWrap');
+  w.classList.remove('opacity-100');w.classList.add('opacity-0');
+  if(!it._chk){
+    let tp=it.media_type||(it.first_air_date?'tv':'movie');
+    let v=await api(`/${tp}/${it.id}/videos`);
+    let ys=(v?.results||[]).filter(x=>x.site==='YouTube'&&x.key);
+    const rank=x=>(x.type==='Trailer'?(x.official?0:1):x.type==='Teaser'?2:3);
+    ys.sort((a,b)=>rank(a)-rank(b));
+    it._keys=[...new Set(ys.map(x=>x.key))];
+    it._chk=1;
+  }
+  if(i!==hIdx||!heroCanAutoPlay)return;
+  let k=it._keys?.[trTry];
+  if(!k){destroyHeroPlayer();fbTmr=setTimeout(()=>changeHeroSlide(1),8000);return}
+  loadHeroKey(k,i);
+}
+
+function advanceHeroTrailerKey(slideIdx){
+  if(slideIdx!==hIdx)return;
+  let it=slides[hIdx];
+  trTry++;
+  if(it?._keys?.[trTry]){
+    destroyHeroPlayer();
+    loadHeroKey(it._keys[trTry],slideIdx);
+  }else{
+    destroyHeroPlayer();
+    fbTmr=setTimeout(()=>changeHeroSlide(1),8000);
+  }
+}
+
+function loadHeroKey(k,slideIdx){
+  let w=$('heroTrailerWrap');
+  clearTimeout(playChkTmr);
+  playChkTmr=setTimeout(()=>{
+    if(slideIdx===hIdx&&w.classList.contains('opacity-0'))advanceHeroTrailerKey(slideIdx);
+  },6000);
+
+  if(heroP&&heroReady&&heroP.loadVideoById){
+    try{
+      heroP.loadVideoById({videoId:k});
+      muted?heroP.mute():(heroP.unMute(),heroP.setVolume(80));
+      heroP.playVideo();
+      return;
+    }catch{}
+  }
+
+  destroyHeroPlayer();
+  let ifr=document.createElement('iframe');
+  ifr.id='heroYtPlayer';
+  ifr.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
+  ifr.setAttribute('allow','autoplay; encrypted-media; picture-in-picture');
+  ifr.setAttribute('title','Hero Background Trailer');
+  let originQ=location.protocol.startsWith('http')?`&origin=${encodeURIComponent(location.origin)}`:'';
+  ifr.src=`https://www.youtube.com/embed/${encodeURIComponent(k)}?enablejsapi=1&autoplay=1&mute=${muted?1:0}&controls=0&disablekb=1&fs=0&iv_load_policy=3&modestbranding=1&rel=0&playsinline=1${originQ}`;
+  w.appendChild(ifr);
+
+  if(ytReady&&window.YT?.Player){
+    try{
+      heroP=new YT.Player('heroYtPlayer',{
+        events:{
+          onReady:e=>{
+            heroReady=1;
+            if(slideIdx!==hIdx)return;
+            muted?e.target.mute():(e.target.unMute(),e.target.setVolume(80));
+            e.target.playVideo();
+          },
+          onStateChange:e=>{
+            if(slideIdx!==hIdx)return;
+            if(e.data===1){clearTimeout(fbTmr);clearTimeout(playChkTmr);w.classList.remove('opacity-0');w.classList.add('opacity-100')}
+            else if(e.data===0){changeHeroSlide(1)}
+          },
+          onError:()=>advanceHeroTrailerKey(slideIdx)
+        }
+      });
+    }catch{
+      ifr.onload=()=>{clearTimeout(playChkTmr);w.classList.remove('opacity-0');w.classList.add('opacity-100')};
+    }
+  }else{
+    ifr.onload=()=>{clearTimeout(playChkTmr);w.classList.remove('opacity-0');w.classList.add('opacity-100');fbTmr=setTimeout(()=>changeHeroSlide(1),26000)};
+  }
+}
+
+function toggleHeroSound(){
+  muted=!muted;let ic=$('heroSoundIcon');
+  if(muted){
+    if(heroReady)heroP?.mute?.();
+    ic.className='w-5 h-5 text-zinc-200';
+    ic.innerHTML=`<path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>`;
+  }else{
+    if(heroReady){heroP?.unMute?.();heroP?.setVolume?.(80);heroP?.playVideo?.()}
+    ic.className='w-5 h-5 text-aiCyan';
+    ic.innerHTML=`<path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>`;
+  }
+}
+
+async function openDetails(id,tp){
+  if(heroReady)heroP?.pauseVideo?.();clearTimeout(fbTmr);clearTimeout(playChkTmr);
+  $('detailsModal').classList.remove('hidden');$('modalLoader').classList.remove('hidden');$('modalContent').classList.add('hidden');document.body.style.overflow='hidden';
+  killModP();
+  let d=await api(`/${tp}/${id}?append_to_response=credits,videos,external_ids,watch/providers,release_dates,content_ratings,images,reviews,recommendations,similar,translations,keywords&include_image_language=en,null,hi,ja,ko`);
+  if(!d){closeModal();toast('Unable to load title details.');return}
+  mId=d.id;mType=tp;imdbId=d.external_ids?.imdb_id||'';primId=imdbId||String(d.id);mData=d;
+  let tt=d.title||d.name,yr=(d.release_date||d.first_air_date||'N/A').split('-')[0];
+  $('modalBackdrop').style.backgroundImage=`url(${ORG}${d.backdrop_path||d.poster_path})`;
+  $('modalPoster').src=d.poster_path?IMG+d.poster_path:FALLBACK_POSTER;
+  $('modalTitle').innerText=tt;$('modalTagline').innerText=d.tagline?`"${d.tagline}"`:'';
+  $('modalYear').innerText=yr;$('modalRuntime').innerText=tp==='movie'?fmtT(d.runtime):(d.episode_run_time?.[0]?`${d.episode_run_time[0]}m/ep`:`${d.number_of_seasons||1} Seasons`);
+  $('modalLangPill').innerText=gLang(d.original_language||'en');$('modalType').innerText=tp==='movie'?'Movie':'Series';
+  $('modalRating').innerText=d.vote_average?`${d.vote_average.toFixed(1)}/10`:'NR';$('modalVotesBadge').innerText=`${(d.vote_count||0).toLocaleString()} Votes`;
+  $('modalGenres').innerHTML=(d.genres||[]).map(g=>`<span class="liquid-pill text-xs px-3 py-1 rounded-full">${g.name}</span>`).join('');
+  $('modalSingleCopyText').innerText=`Copy ID: ${imdbId||'#'+d.id}`;
+
+  $('modalOverview').innerText=d.overview||'No storyline available.';
+  $('modalWikiPlot').innerHTML='<p class="text-zinc-400 italic">Loading detailed plot...</p>';
+  $('modalStoryThemes').innerHTML=(d.keywords?.keywords||d.keywords?.results||[]).slice(0,10).map(k=>`<span class="bg-white/5 border border-white/10 text-zinc-300 px-2.5 py-0.5 rounded-full text-[11px]">#${k.name}</span>`).join('');
+  let prod=(tp==='tv'?d.networks?.[0]?.name:d.production_companies?.[0]?.name)||'',orig=d.production_countries?.[0]?.name||'';
+  $('modalExtendedStory').innerText=[d.belongs_to_collection?.name?`Franchise: ${d.belongs_to_collection.name}`:'',d.release_date||d.first_air_date?`Released: ${d.release_date||d.first_air_date}`:'',prod?`By ${prod}`:'',orig].filter(Boolean).join(' • ');
+  loadWiki(tt,yr,tp,id);
+
+  setupOtt();
+  let cr=d.credits?.crew||[],dir=cr.find(c=>c.job==='Director')||d.created_by?.[0]||cr.find(c=>c.job==='Executive Producer'),wr=cr.find(c=>c.job==='Writer'||c.job==='Screenplay');
+  $('modalCrewInfo').innerHTML=[dir?`Dir: <b class="text-white">${dir.name}</b>`:'',wr?`Writer: <b class="text-white">${wr.name}</b>`:''].filter(Boolean).join(' • ');
+  $('modalCast').innerHTML=(d.credits?.cast||[]).slice(0,16).map(c=>`<div class="shrink-0 w-[92px] text-center space-y-1.5"><div class="glow-ring rounded-full w-20 h-20 mx-auto"><img src="${c.profile_path?IMG+c.profile_path:FALLBACK_POSTER}" loading="lazy" class="w-full h-full rounded-full object-cover bg-zinc-900"></div><p class="text-[11px] font-bold truncate">${c.name}</p><p class="text-[10px] text-aiCyan truncate">${c.character||''}</p></div>`).join('');
+
+  let vids=(d.videos?.results||[]).filter(v=>v.site==='YouTube');
+  if(vids.length){
+    $('trailerSection').classList.remove('hidden');let mv=vids.find(v=>v.type==='Trailer')||vids[0];playModVid(mv.key);
+    $('modalVideoCarousel').innerHTML=vids.slice(0,12).map(v=>`<button onclick="playModVid('${v.key}')" class="shrink-0 w-44 text-left liquid-glass rounded-xl overflow-hidden hover:border-aiCyan cursor-pointer"><div class="relative h-24 bg-black"><img src="https://img.youtube.com/vi/${v.key}/mqdefault.jpg" loading="lazy" class="w-full h-full object-cover"><span class="absolute bottom-1 right-1 bg-black/80 text-[9px] text-aiCyan px-1.5 rounded">${v.type}</span></div><p class="p-2 text-[11px] font-semibold truncate">${v.name}</p></button>`).join('');
+  }else $('trailerSection').classList.add('hidden');
+
+  let gal=[...(d.images?.backdrops||[]).slice(0,10).map(b=>[b.file_path,'w-60 h-36']),...(d.images?.posters||[]).slice(0,8).map(p=>[p.file_path,'w-28 h-36'])];
+  if(gal.length){$('gallerySection').classList.remove('hidden');$('modalGallery').innerHTML=gal.map(g=>`<img onclick="$('lightboxImg').src='${ORG}${g[0]}';$('lightboxModal').classList.remove('hidden')" src="${IMG}${g[0]}" loading="lazy" class="${g[1]} shrink-0 rounded-xl object-cover border border-aiCyan/30 cursor-zoom-in">`).join('')}else $('gallerySection').classList.add('hidden');
+
+  let tech=[['Status',d.status||'N/A'],['Release',d.release_date||d.first_air_date||'N/A'],['Language',gLang(d.original_language||'en')],['Production',prod||'N/A'],['Country',orig||'N/A'],['ID',imdbId?`${imdbId} / #${d.id}`:`#${d.id}`],...(tp==='movie'?[['Budget',fmt$(d.budget)],['Revenue',fmt$(d.revenue),1]]:[['Seasons',d.number_of_seasons||'N/A'],['Episodes',d.number_of_episodes||'N/A']])];
+  $('modalTechGrid').innerHTML=tech.map(t=>`<div class="bg-white/5 border border-white/10 rounded-xl p-3"><p class="text-zinc-400 text-[10px] uppercase">${t[0]}</p><p class="font-bold mt-1 truncate ${t[2]?'text-emerald-400':''}">${t[1]}</p></div>`).join('');
+
+  revs=d.reviews?.results||[];revPages=d.reviews?.total_pages||1;revExp=0;drawRevs(d.reviews?.total_results||revs.length);
+  let seen=new Set();simPool=[...(d.recommendations?.results||[]),...(d.similar?.results||[])].filter(s=>s.poster_path&&!seen.has(s.id)&&seen.add(s.id));simOff=0;drawSim();
+  drawDubs(d);
+  $('modalLoader').classList.add('hidden');$('modalContent').classList.remove('hidden');$('modalContent').scrollTop=0;
+}
+
+async function loadWiki(tt,yr,tp,id){
+  let b=$('modalWikiPlot');
+  try{
+    let s=await (await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`${tt} ${yr!=='N/A'?yr:''} ${tp==='movie'?'film':'TV series'}`)}&format=json&origin=*&srlimit=1`)).json();
+    let hit=s?.query?.search?.[0];if(!hit||mId!==id){b.innerHTML='';return}
+    let p=await (await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=wiki&titles=${encodeURIComponent(hit.title)}&format=json&origin=*`)).json();
+    let ext=Object.values(p?.query?.pages||{})[0]?.extract||'';if(!ext||mId!==id){b.innerHTML='';return}
+    let m=ext.match(/==\s*(Plot|Premise|Synopsis|Storyline)\s*==\s*\n([\s\S]*?)(\n==|$)/i),raw=m?m[2]:ext.split('\n==')[0];
+    b.innerHTML=raw.split(/\n+/).map(x=>x.trim()).filter(x=>x.length>40).slice(0,4).map(x=>`<p>${x}</p>`).join('');
+  }catch{b.innerHTML=''}
+}
+
+function drawSim(){
+  let s=$('similarSection'),g=$('modalSimilar');if(!simPool.length){s.classList.add('hidden');return}
+  s.classList.remove('hidden');g.innerHTML='';
+  for(let i=0;i<Math.min(18,simPool.length);i++){let x=simPool[(simOff+i)%simPool.length];g.appendChild(card(x,x.media_type||mType,'portrait',null,1))}
+}
+async function refreshSimilar(){
+  if(!simPool.length)return;simOff=(simOff+18)%simPool.length;
+  if(simPool.length<36){let m=await api(`/${mType}/${mId}/recommendations?page=2`);if(m?.results){let s=new Set(simPool.map(x=>x.id));m.results.filter(x=>x.poster_path&&!s.has(x.id)).forEach(x=>simPool.push(x))}}
+  drawSim();toast('Recommendations refreshed!');
+}
+
+function setupOtt(){
+  let ott=mData?.['watch/providers']?.results||{},oC=Object.keys(ott).filter(c=>ott[c]?.flatrate?.length||ott[c]?.rent?.length||ott[c]?.buy?.length||ott[c]?.free?.length);
+  let rC=mType==='movie'?(mData?.release_dates?.results||[]).map(r=>r.iso_3166_1):(mData?.content_ratings?.results||[]).map(r=>r.iso_3166_1);
+  let codes=[...new Set([...oC,...rC])].sort((a,b)=>a==='IN'?-1:b==='IN'?1:gReg(a).localeCompare(gReg(b)));
+  $('ottCountryCountBadge').innerText=`Released in ${codes.length} ${codes.length===1?'Country':'Countries'}`;
+  let sel=$('ottRegionSelect');
+  sel.innerHTML=codes.length?codes.map(c=>`<option value="${c}">${flag(c)} ${gReg(c)} (${c})</option>`).join(''):`<option value="IN">🇮🇳 India (IN)</option>`;
+  if(codes.includes('IN'))sel.value='IN';renderOttProviders();
+}
+
+function renderOttProviders(){
+  let reg=$('ottRegionSelect').value||'IN',cert='';
+  if(mType==='movie'){let l=mData?.release_dates?.results||[],p=l.find(r=>r.iso_3166_1===reg)||l.find(r=>r.iso_3166_1==='US')||l[0];cert=p?.release_dates?.find(d=>d.certification)?.certification||''}
+  else{let l=mData?.content_ratings?.results||[],p=l.find(r=>r.iso_3166_1===reg)||l.find(r=>r.iso_3166_1==='US')||l[0];cert=p?.rating||''}
+  $('modalMaturity').innerText=(cert==='UA'?'U/A 13+':cert)||'U/A';
+
+  let tb=$('theaterStatusBox');tb.classList.add('hidden');
+  if(mType==='movie'){
+    let rel=mData?.release_dates?.results?.find(r=>r.iso_3166_1===reg)?.release_dates?.find(d=>d.type===3||d.type===2);
+    if(rel?.release_date){
+      let days=(Date.now()-new Date(rel.release_date).getTime())/864e5,ds=rel.release_date.split('T')[0];tb.classList.remove('hidden');
+      tb.innerHTML=days>=-7&&days<=75?`<div class="bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 rounded-xl px-4 py-2 text-xs font-bold">🎬 Running in Theatres Now in ${gReg(reg)} (${ds})</div>`:`<div class="bg-white/5 border border-white/15 text-zinc-200 rounded-xl px-4 py-2 text-xs">${days>75?'🎟️ Theatrical Release':'🍿 Upcoming in Theatres'} (${gReg(reg)}): ${ds}</div>`;
+    }
+  }
+  let pr=mData?.['watch/providers']?.results?.[reg],w=$('ottProvidersWrap');
+  if(!pr||(!pr.flatrate&&!pr.rent&&!pr.buy&&!pr.free)){w.innerHTML=`<p class="text-xs text-zinc-400">No OTT providers listed for ${gReg(reg)}.</p>`;return}
+  let grp=(lb,ls)=>ls?.length?`<div><p class="text-[11px] uppercase text-zinc-400 font-bold mb-2">${lb}</p><div class="flex flex-wrap gap-2">${ls.map(p=>`<div class="flex items-center gap-2 bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 select-none"><img src="${ORG}${p.logo_path}" class="w-6 h-6 rounded-md"><span class="text-xs font-semibold">${p.provider_name}</span></div>`).join('')}</div></div>`:'';
+  w.innerHTML=grp('Stream',pr.flatrate)+grp('Free',pr.free)+grp('Rent',pr.rent)+grp('Buy',pr.buy);
+}
+
+function drawRevs(tot){
+  let b=$('modalReviews'),btn=$('moreReviewsBtn'),ls=revExp?revs:revs.slice(0,2);
+  if(!revs.length){btn.classList.add('hidden');b.innerHTML='<p class="text-zinc-400 text-xs">No user reviews yet.</p>';return}
+  if(!revExp&&(revs.length>2||revPages>1)){btn.classList.remove('hidden');btn.innerText=`More Reviews (${tot})`}else btn.classList.add('hidden');
+  b.innerHTML=ls.map((r,i)=>`<div class="liquid-glass rounded-2xl p-4 space-y-2"><div class="flex justify-between"><span class="font-bold text-xs">${r.author}</span>${r.author_details?.rating?`<span class="text-[11px] bg-yellow-500/15 text-yellow-400 px-2 rounded-full">★ ${r.author_details.rating}/10</span>`:''}</div><p id="rv_${i}" class="text-xs text-zinc-300 leading-relaxed line-clamp-4"></p><button onclick="let e=$('rv_${i}');this.innerText=e.classList.toggle('line-clamp-4')?'Read Full':'Show Less'" class="text-[11px] text-aiCyan font-semibold cursor-pointer">Read Full</button></div>`).join('');
+  ls.forEach((r,i)=>{let el=$('rv_'+i);if(el)el.textContent=r.content});
+}
+async function loadAllReviews(){
+  $('moreReviewsBtn').innerText='Loading...';
+  if(revPages>1){(await Promise.all(Array.from({length:revPages-1},(_,i)=>api(`/${mType}/${mId}/reviews?page=${i+2}`)))).forEach(r=>{if(r?.results)revs.push(...r.results)});revPages=1}
+  revExp=1;drawRevs(revs.length);
+}
+
+function drawDubs(d){
+  let orig=gLang(d.original_language||'en'),sp=[...new Set((d.spoken_languages||[]).map(l=>gLang(l.iso_639_1||l.english_name)).filter(Boolean))];if(!sp.includes(orig))sp.unshift(orig);
+  let tr=(d.translations?.translations||[]).map(t=>gLang(t.iso_639_1)).filter(Boolean),all=[...new Set([...sp,...tr])];
+  let pri=['Hindi','English','Tamil','Telugu','Malayalam','Kannada','Japanese','Korean','Spanish','French'],srt=[...pri.filter(x=>all.includes(x)),...all.filter(x=>!pri.includes(x))];
+  $('modalDubInfo').innerHTML=`<div><p class="text-zinc-400 text-[11px] uppercase font-bold mb-1.5">Original Dub / Audio</p><div class="flex flex-wrap gap-1.5">${sp.map(s=>`<span class="liquid-pill px-3 py-1 rounded-full font-bold">${s}</span>`).join('')}</div></div><div><p class="text-zinc-400 text-[11px] uppercase font-bold mb-1.5">Available Dubbed Languages</p><div class="flex flex-wrap gap-1.5">${srt.map(x=>`<span class="${x==='Hindi'?'bg-aiCyan/20 border-aiCyan text-aiCyan font-bold':'bg-white/5 border-white/15 text-zinc-200'} border px-3 py-1 rounded-full text-[11px]">${x}</span>`).join('')}</div></div>`;
+}
+
+function copyPrimaryId(){copyTextSafe(primId,`Copied ID: ${primId}`)}
+function shareCurrentMedia(){
+  let t=`${mData?.title||mData?.name} — ID: ${primId}`;
+  if(navigator.share)navigator.share({title:t,text:t,url:location.href}).catch(()=>{});
+  else copyTextSafe(t,'Share info copied!');
+}
+function killModP(){if(modP?.destroy){try{modP.destroy()}catch{}modP=null}$('modalTrailerHost').innerHTML='';$('modalTrailerErrBox').classList.add('hidden')}
+function playModVid(k){
+  killModP();let u=`https://www.youtube.com/watch?v=${k}`;$('modalYtFallback').href=u;$('modalYtErrBtn').href=u;
+  let originQ=location.protocol.startsWith('http')?`&origin=${encodeURIComponent(location.origin)}`:'';
+  let ifr=document.createElement('iframe');
+  ifr.id='modYt';ifr.className='w-full h-full';ifr.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
+  ifr.setAttribute('allow','autoplay; encrypted-media; picture-in-picture');ifr.allowFullscreen=true;
+  ifr.src=`https://www.youtube.com/embed/${encodeURIComponent(k)}?rel=0&playsinline=1&enablejsapi=1${originQ}`;
+  $('modalTrailerHost').appendChild(ifr);
+  if(ytReady&&window.YT?.Player){
+    try{modP=new YT.Player('modYt',{events:{onError:()=>$('modalTrailerErrBox').classList.remove('hidden')}})}catch{}
+  }
+}
+function closeModal(){
+  $('detailsModal').classList.add('hidden');document.body.style.overflow='';killModP();
+  if(heroCanAutoPlay&&heroReady&&!$('heroSection').classList.contains('hidden'))heroP?.playVideo?.();
+}
+
+let sTmr;
+function runSearch(q){
+  clearTimeout(sTmr);
+  if(!q){sSeq++;$('searchThinking').classList.add('hidden');restorePage();return}
+  $('searchThinking').classList.remove('hidden');let seq=++sSeq,sc=page;
+  sTmr=setTimeout(async()=>{
+    let res=[];
+    if(sc==='home'){res=((await api(`/search/multi?query=${encodeURIComponent(q)}`))?.results||[]).filter(i=>(i.media_type==='movie'||i.media_type==='tv')&&i.poster_path)}
+    else if(sc==='movie'){res=pureM((await api(`/search/movie?query=${encodeURIComponent(q)}`))?.results).map(i=>({...i,media_type:'movie'}))}
+    else if(sc==='tv'){res=pureT((await api(`/search/tv?query=${encodeURIComponent(q)}`))?.results).map(i=>({...i,media_type:'tv'}))}
+    else if(sc==='indiantv'){res=((await api(`/search/tv?query=${encodeURIComponent(q)}`))?.results||[]).filter(isIndianTV).map(i=>({...i,media_type:'tv'}))}
+    else if(sc==='anime'){let[t,m]=await Promise.all([api(`/search/tv?query=${encodeURIComponent(q)}`),api(`/search/movie?query=${encodeURIComponent(q)}`)]);res=[...(t?.results||[]).filter(i=>i.poster_path&&isAni(i)).map(i=>({...i,media_type:'tv'})),...(m?.results||[]).filter(i=>i.poster_path&&isAni(i)).map(i=>({...i,media_type:'movie'}))]}
+    else if(sc==='kdrama'){res=((await api(`/search/tv?query=${encodeURIComponent(q)}`))?.results||[]).filter(i=>i.poster_path&&i.original_language==='ko').map(i=>({...i,media_type:'tv'}))}
+    if(seq!==sSeq||!$('searchInput').value.trim())return;
+    $('searchThinking').classList.add('hidden');if(heroReady)heroP?.pauseVideo?.();
+    $('heroSection').classList.add('hidden');$('homeView').classList.add('hidden');$('dedicatedView').classList.add('hidden');$('searchView').classList.remove('hidden');
+    $('globalSearchTitle').innerText=`Results: "${q}"`;$('globalSearchScopeLabel').innerText=`Scope: ${sc==='indiantv'?'INDIAN TV':sc.toUpperCase()}`;
+    $('searchEmpty').classList.toggle('hidden',res.length>0);fillRow('searchGrid',res,null,'portrait',1);scrollTo(0,0);
+  },360);
+}
+$('searchInput').addEventListener('input',e=>{
+  let q=e.target.value.trim();$('clearSearchBtn').classList.toggle('hidden',!q);runSearch(q);
+});
+$('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();let q=e.target.value.trim();if(q)runSearch(q)}});
+
+function restorePage(){$('searchView').classList.add('hidden');$('heroSection').classList.remove('hidden');$(page==='home'?'homeView':'dedicatedView').classList.remove('hidden');if(heroCanAutoPlay&&heroReady)heroP?.playVideo?.()}
+function clearHeaderSearch(){sSeq++;clearTimeout(sTmr);$('searchInput').value='';$('clearSearchBtn').classList.add('hidden');$('searchThinking').classList.add('hidden');restorePage()}
+function retryHome(){$('errorView').classList.add('hidden');heroCanAutoPlay=true;openPage('home')}
+
+/* ==========================================================================
+   10. RESOURCE LOADING MANAGER (REAL SIGNAL TRACKING, NO FAKE TIMERS)
+   ========================================================================== */
+const ResourceLoader = (() => {
+  const preloadImage = (url, timeoutMs = 4000) => new Promise(resolve => {
+    if (!url) { resolve({ url, ok: false }); return; }
+    const img = new Image();
+    let settled = false;
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      resolve({ url, ok });
+    };
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    img.onload = () => { clearTimeout(timer); finish(true); };
+    img.onerror = () => { clearTimeout(timer); finish(false); };
+    img.src = url;
+  });
+
+  const getRuntimeMetrics = () => {
+    const entries = performance.getEntriesByType ? performance.getEntriesByType('resource') : [];
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const netLabel = conn?.effectiveType ? ` • ${conn.effectiveType.toUpperCase()}` : '';
+    return {
+      count: entries.length,
+      label: `Resources tracked: ${entries.length}${netLabel}`
+    };
+  };
+
+  return { preloadImage, getRuntimeMetrics };
+})();
+
+/* ==========================================================================
+   11. LAG-FREE, PERIMETER-TRACING SWARM CURSOR ENGINE (STAGE 04)
+   ==========================================================================
+   - Suspends costly backdrop-filter & CSS pulse animations during Stage 04.
+   - Zero ResizeObserver feedback loop, zero trails, zero overlapping targets.
+   - Cursors trace real element outlines (Top-Left -> Top-Right -> Bottom-Right),
+     display concise role tags, type-sweep the hero headline, and snap-reveal
+     each real DOM component with a completion pulse.
+   ========================================================================== */
+const SwarmEngine = (() => {
+  let active = false;
+  let rafId = null;
+  let resizeListener = null;
+  let dirtyRects = false;
+
+  const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  function quadBezier(p0, p1, p2, t) {
+    const u = 1 - t;
+    return {
+      x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+      y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y
+    };
+  }
+
+  function restoreHeroTitle() {
+    const t = $('heroTitle');
+    if (t && t.dataset.fullText) t.textContent = t.dataset.fullText;
+  }
+
+  function cleanupDomPrep() {
+    document.body.classList.remove('swarm-building');
+    restoreHeroTitle();
+    document.querySelectorAll('.swarm-prep, .swarm-revealed, .swarm-bg-prep, .swarm-bg-revealed, .swarm-card-prep, .swarm-card-in').forEach(el => {
+      el.classList.remove('swarm-prep', 'swarm-revealed', 'swarm-bg-prep', 'swarm-bg-revealed', 'swarm-card-prep', 'swarm-card-in');
+    });
+  }
+
+  function prepDom() {
+    const sections = [...document.querySelectorAll('#rowsContainer > section')];
+    const cards = [...document.querySelectorAll('#homeTop10 > div, #hr_1 > div, #hr_2 > div')];
+    const navItems = [...document.querySelectorAll('#mainNav .nav-link')];
+
+    [$('headerBrand'), ...navItems, $('headerSearchWrap'), $('heroBadge'), $('heroTitle'), $('heroOverview'), $('heroButtons'), $('heroNavPill'), $('heroSoundBtn'), ...sections].forEach(el => {
+      if (el) el.classList.add('swarm-prep');
+    });
+
+    const bg = $('heroBgImg');
+    if (bg) bg.classList.add('swarm-bg-prep');
+    cards.forEach(c => c.classList.add('swarm-card-prep'));
+  }
+
+  function revealElement(el, mode) {
+    if (!el) return;
+    if (mode === 'bg') {
+      el.classList.remove('swarm-bg-prep');
+      el.classList.add('swarm-bg-revealed');
+    } else if (mode === 'card') {
+      el.classList.remove('swarm-card-prep');
+      el.classList.add('swarm-card-in');
+    } else {
+      el.classList.remove('swarm-prep');
+      el.classList.add('swarm-revealed');
+    }
+  }
+
+  function isRectVisible(r, vw, vh) {
+    return r && r.width > 4 && r.height > 4 && r.right > 6 && r.left < vw - 6 && r.bottom > 0 && r.top < vh + 40;
+  }
+
+  function buildWaves(vw, vh, cursorCount, isMobile) {
+    const navItems = [...document.querySelectorAll('#mainNav .nav-link')].filter(el => isRectVisible(el.getBoundingClientRect(), vw, vh));
+    const rowSections = [...document.querySelectorAll('#rowsContainer > section')];
+    const row0Title = rowSections[0]?.querySelector('h2') || null;
+    const row1Title = rowSections[1]?.querySelector('h2') || null;
+    const row2Title = rowSections[2]?.querySelector('h2') || null;
+    const topCards = [...document.querySelectorAll('#homeTop10 > div')].filter(el => isRectVisible(el.getBoundingClientRect(), vw, vh)).slice(0, isMobile ? 4 : 6);
+    const row1Cards = [...document.querySelectorAll('#hr_1 > div')].filter(el => isRectVisible(el.getBoundingClientRect(), vw, vh)).slice(0, isMobile ? 2 : 4);
+    const row2Cards = [...document.querySelectorAll('#hr_2 > div')].filter(el => isRectVisible(el.getBoundingClientRect(), vw, vh)).slice(0, isMobile ? 2 : 3);
+
+    const tTravel = isMobile ? 180 : 230;
+    const tBuild = isMobile ? 210 : 270;
+
+    // Wave 1: Header Brand + All Nav Tabs (including Indian TV) + Search Box
+    const w1Buckets = Array.from({ length: cursorCount }, () => []);
+    w1Buckets[0].push({ el: $('headerBrand'), tag: 'Brand', mode: 'trace', travel: tTravel, build: tBuild });
+    navItems.forEach((btn, idx) => {
+      const slot = cursorCount >= 4 ? (1 + (idx % (cursorCount - 2))) : (idx % cursorCount);
+      w1Buckets[slot].push({ el: btn, tag: btn.innerText.trim(), mode: 'trace', travel: 150, build: 185 });
+    });
+    w1Buckets[cursorCount - 1].push({ el: $('headerSearchWrap'), tag: 'Search', mode: 'trace', travel: tTravel, build: tBuild + 40 });
+
+    // Wave 2: Hero Backdrop + Badge + Typewriter Title + Overview + Action Buttons
+    const w2Buckets = Array.from({ length: cursorCount }, () => []);
+    w2Buckets[0].push({ el: $('heroBadge'), tag: 'Badge', mode: 'trace', travel: 180, build: 180 });
+    w2Buckets[0].push({ el: $('heroTitle'), tag: 'Type', mode: 'textSweep', travel: 160, build: isMobile ? 460 : 580 });
+    w2Buckets[1 % cursorCount].push({ el: $('heroOverview'), tag: 'Story', mode: 'trace', travel: 210, build: 280 });
+    w2Buckets[2 % cursorCount].push({ el: $('heroButtons'), tag: 'Action', mode: 'trace', travel: 200, build: 240 });
+    w2Buckets[2 % cursorCount].push({ el: $('heroNavPill'), tag: 'Slider', mode: 'trace', travel: 160, build: 180 });
+    w2Buckets[cursorCount - 1].push({ el: $('heroBgImg'), tag: 'Stage', mode: 'bg', travel: 220, build: 340 });
+    w2Buckets[cursorCount - 1].push({ el: $('heroSoundBtn'), tag: 'Audio', mode: 'trace', travel: 170, build: 170 });
+
+    // Wave 3: Content Sections & Real Movie / Indian TV Cards
+    const w3Buckets = Array.from({ length: cursorCount }, () => []);
+    if (row0Title && isRectVisible(row0Title.getBoundingClientRect(), vw, vh)) {
+      w3Buckets[0].push({ el: row0Title, tag: 'Trending', mode: 'trace', travel: 190, build: 200, onStart: () => revealElement(rowSections[0], 'section') });
+    }
+    if (row1Title && isRectVisible(row1Title.getBoundingClientRect(), vw, vh)) {
+      w3Buckets[1 % cursorCount].push({ el: row1Title, tag: 'Row', mode: 'trace', travel: 200, build: 200, onStart: () => revealElement(rowSections[1], 'section') });
+    }
+    if (row2Title && isRectVisible(row2Title.getBoundingClientRect(), vw, vh)) {
+      w3Buckets[(cursorCount - 1)].push({ el: row2Title, tag: 'Indian TV', mode: 'trace', travel: 210, build: 200, onStart: () => revealElement(rowSections[2], 'section') });
+    }
+
+    const allCards = [
+      ...topCards.map((el, i) => ({ el, tag: `Top #${i + 1}` })),
+      ...row1Cards.map((el, i) => ({ el, tag: `Pick #${i + 1}` })),
+      ...row2Cards.map((el, i) => ({ el, tag: `IN TV #${i + 1}` }))
+    ];
+    allCards.forEach((item, idx) => {
+      w3Buckets[idx % cursorCount].push({
+        el: item.el,
+        tag: item.tag,
+        mode: 'card',
+        travel: isMobile ? 165 : 195,
+        build: isMobile ? 210 : 250
+      });
+    });
+
+    return [
+      { buckets: w1Buckets },
+      { buckets: w2Buckets, onEnter: () => revealElement($('mainHeader'), 'section') },
+      {
+        buckets: w3Buckets,
+        onEnter: () => {
+          rowSections.forEach((s, idx) => {
+            if (idx < 3) revealElement(s, 'section');
+          });
+        }
+      }
+    ];
+  }
+
+  function run(shouldContinue) {
+    return new Promise(resolve => {
+      const cv = $('swarmCanvas');
+      const ctx = cv?.getContext ? cv.getContext('2d') : null;
+      if (!cv || !ctx) { cleanupDomPrep(); resolve(); return; }
+
+      active = true;
+      document.body.classList.add('swarm-building');
+      cv.classList.remove('hidden');
+
+      let vw = window.innerWidth;
+      let vh = window.innerHeight;
+      let isMobile = vw < 640;
+      let dpr = isMobile ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, 2);
+
+      const syncCanvas = () => {
+        vw = window.innerWidth;
+        vh = window.innerHeight;
+        isMobile = vw < 640;
+        dpr = isMobile ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, 2);
+        cv.width = Math.floor(vw * dpr);
+        cv.height = Math.floor(vh * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        dirtyRects = true;
+      };
+      syncCanvas();
+
+      resizeListener = () => syncCanvas();
+      window.addEventListener('resize', resizeListener, { passive: true });
+
+      const cursorCount = isMobile ? 4 : 6;
+      const palette = ['#00f2fe', '#4facfe', '#38bdf8', '#a855f7', '#22d3ee', '#ec4899'];
+
+      const cursors = Array.from({ length: cursorCount }, (_, i) => ({
+        id: i,
+        x: i % 2 === 0 ? -36 : vw + 36,
+        y: Math.max(40, Math.min(vh - 40, (vh / (cursorCount + 1)) * (i + 1))),
+        alpha: 0,
+        color: palette[i % palette.length],
+        tag: '',
+        arcSign: (i % 2 === 0 ? 1 : -1) * (18 + (i % 3) * 10),
+        queue: [],
+        task: null,
+        phase: 'idle',
+        segStart: 0,
+        startPt: { x: 0, y: 0 },
+        ctrlPt: { x: 0, y: 0 },
+        endPt: { x: 0, y: 0 }
+      }));
+
+      const effects = []; // completed box glow + click pulses
+      const waves = buildWaves(vw, vh, cursorCount, isMobile);
+      let waveIdx = 0;
+      let exiting = false;
+      let exitStart = 0;
+      const exitDuration = 320;
+      let lastFrame = performance.now();
+
+      const refreshTaskRect = task => {
+        if (!task?.el) return null;
+        const r = task.el.getBoundingClientRect();
+        task.rect = r;
+        return r;
+      };
+
+      const startNextTask = (c, now) => {
+        while (c.queue.length) {
+          const next = c.queue.shift();
+          if (!next?.el) continue;
+          const r = refreshTaskRect(next);
+          if (!isRectVisible(r, vw, vh)) {
+            revealElement(next.el, next.mode === 'bg' ? 'bg' : next.mode === 'card' ? 'card' : 'normal');
+            continue;
+          }
+          if (next.onStart) next.onStart();
+          c.task = next;
+          c.tag = next.tag || '';
+          c.phase = 'travel';
+          c.segStart = now;
+          c.startPt = { x: c.x, y: c.y };
+
+          if (next.mode === 'textSweep') {
+            const txt = next.el.dataset.fullText || next.el.innerText || '';
+            next.el.dataset.fullText = txt;
+            next.el.textContent = '';
+            revealElement(next.el, 'normal');
+            c.endPt = { x: r.left, y: r.top + r.height * 0.52 };
+          } else if (next.mode === 'bg') {
+            c.endPt = {
+              x: Math.max(24, r.left + r.width * 0.48),
+              y: Math.max(72, r.top + r.height * 0.14)
+            };
+          } else {
+            c.endPt = { x: r.left, y: r.top };
+          }
+
+          const mx = (c.startPt.x + c.endPt.x) * 0.5;
+          const my = (c.startPt.y + c.endPt.y) * 0.5;
+          const dx = c.endPt.x - c.startPt.x;
+          const dy = c.endPt.y - c.startPt.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const bend = Math.min(44, len * 0.16) * Math.sign(c.arcSign);
+          c.ctrlPt = { x: mx + (-dy / len) * bend, y: my + (dx / len) * bend };
+          return;
+        }
+        c.task = null;
+        c.tag = '';
+        c.phase = 'idle';
+      };
+
+      const loadWave = (idx, now) => {
+        const w = waves[idx];
+        if (!w) return false;
+        if (w.onEnter) w.onEnter();
+        cursors.forEach((c, i) => {
+          c.queue = (w.buckets[i] || []).slice();
+          startNextTask(c, now);
+        });
+        return true;
+      };
+
+      loadWave(0, lastFrame);
+
+      // Draw crisp builder cursor + compact role tag (zero blur, zero lag)
+      const drawCursorPointer = c => {
+        if (c.alpha <= 0.02) return;
+        ctx.save();
+        ctx.globalAlpha = c.alpha;
+        ctx.translate(c.x, c.y);
+
+        ctx.fillStyle = c.color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.4;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(13, 9.5);
+        ctx.lineTo(7.2, 10.6);
+        ctx.lineTo(10.2, 17.2);
+        ctx.lineTo(7.4, 18.4);
+        ctx.lineTo(4.3, 11.8);
+        ctx.lineTo(0, 15.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        if (c.tag) {
+          ctx.font = 'bold 9px ui-sans-serif, system-ui, sans-serif';
+          const tw = ctx.measureText(c.tag).width;
+          const pw = tw + 10;
+          const ph = 15;
+          const px = 12;
+          const py = 14;
+          ctx.fillStyle = 'rgba(7, 9, 15, 0.9)';
+          ctx.strokeStyle = c.color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 4);
+          else ctx.rect(px, py, pw, ph);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(c.tag, px + 5, py + ph * 0.54);
+        }
+
+        ctx.restore();
+      };
+
+      // Perimeter trace: cursor glides Top-Left -> Top-Right (0..0.5) -> Bottom-Right (0.5..1)
+      // while drawing all 4 blueprint edges progressively around the real DOM element.
+      const updateTraceAndDraw = (c, e) => {
+        const t = c.task;
+        const r = t?.rect;
+        if (!t || !r) return;
+
+        const left = r.left;
+        const top = r.top;
+        const right = Math.min(vw - 8, r.right);
+        const bottom = Math.min(vh - 8, r.bottom);
+        const w = Math.max(4, right - left);
+        const h = Math.max(4, bottom - top);
+
+        if (t.mode === 'textSweep') {
+          c.x = lerp(left, right, e);
+          c.y = top + h * 0.52;
+          ctx.save();
+          ctx.strokeStyle = c.color;
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 0.92;
+          ctx.beginPath();
+          ctx.moveTo(c.x, top + 2);
+          ctx.lineTo(c.x, bottom - 2);
+          ctx.stroke();
+          ctx.restore();
+          return;
+        }
+
+        if (t.mode === 'bg') {
+          c.x = lerp(t.startCornerX, Math.min(vw - 24, right - 26), e);
+          c.y = lerp(t.startCornerY, Math.min(vh - 24, top + h * 0.7), e);
+          ctx.save();
+          ctx.strokeStyle = c.color;
+          ctx.lineWidth = 1.4;
+          ctx.globalAlpha = 0.55;
+          ctx.strokeRect(t.startCornerX, t.startCornerY, Math.max(8, c.x - t.startCornerX), Math.max(8, c.y - t.startCornerY));
+          ctx.restore();
+          return;
+        }
+
+        // Perimeter trace positioning for cursor tip
+        if (e < 0.5) {
+          const pTop = e * 2;
+          c.x = lerp(left, right, pTop);
+          c.y = top;
+        } else {
+          const pSide = (e - 0.5) * 2;
+          c.x = right;
+          c.y = lerp(top, bottom, pSide);
+        }
+
+        // Progressive 4-sided blueprint wireframe synchronized with cursor
+        const topProg = Math.min(1, e * 2);
+        const sideProg = Math.max(0, (e - 0.5) * 2);
+
+        ctx.save();
+        ctx.strokeStyle = c.color;
+        ctx.lineWidth = 1.45;
+        ctx.globalAlpha = 0.88;
+
+        ctx.beginPath();
+        // Top edge (left -> right)
+        ctx.moveTo(left, top);
+        ctx.lineTo(left + w * topProg, top);
+        // Left edge (top -> bottom grows alongside)
+        ctx.moveTo(left, top);
+        ctx.lineTo(left, top + h * topProg);
+        // Right & Bottom edges complete as cursor sweeps down
+        if (sideProg > 0) {
+          ctx.moveTo(right, top);
+          ctx.lineTo(right, top + h * sideProg);
+          ctx.moveTo(left, bottom);
+          ctx.lineTo(left + w * sideProg, bottom);
+        }
+        ctx.stroke();
+
+        // Subtle construction fill while drawing
+        ctx.globalAlpha = 0.08 * e;
+        ctx.fillStyle = c.color;
+        ctx.fillRect(left, top, w * topProg, h * Math.max(0.2, sideProg || topProg * 0.35));
+
+        // Corner anchor nodes
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(left - 2, top - 2, 4, 4);
+        if (sideProg > 0) ctx.fillRect(right - 2, top - 2, 4, 4);
+        ctx.restore();
+      };
+
+      const drawEffects = now => {
+        for (let i = effects.length - 1; i >= 0; i--) {
+          const fx = effects[i];
+          const age = (now - fx.born) / fx.life;
+          if (age >= 1) { effects.splice(i, 1); continue; }
+          const fade = 1 - age;
+
+          if (fx.type === 'pulse') {
+            ctx.save();
+            ctx.globalAlpha = fade * 0.72;
+            ctx.strokeStyle = fx.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(fx.x, fx.y, 3 + easeOutCubic(age) * 15, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          } else if (fx.type === 'flash' && fx.rect) {
+            ctx.save();
+            ctx.globalAlpha = fade * 0.55;
+            ctx.strokeStyle = fx.color;
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(fx.rect.left, fx.rect.top, fx.rect.width, fx.rect.height);
+            ctx.restore();
+          }
+        }
+      };
+
+      const stopAll = () => {
+        active = false;
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        if (resizeListener) { window.removeEventListener('resize', resizeListener); resizeListener = null; }
+        ctx.clearRect(0, 0, vw, vh);
+        cv.classList.add('hidden');
+        cleanupDomPrep();
+      };
+
+      const tick = now => {
+        if (!active || !shouldContinue()) { stopAll(); resolve(); return; }
+
+        if (document.hidden) {
+          const pauseDelta = now - lastFrame;
+          lastFrame = now;
+          cursors.forEach(c => { c.segStart += pauseDelta; });
+          effects.forEach(fx => { fx.born += pauseDelta; });
+          if (exiting) exitStart += pauseDelta;
+          rafId = requestAnimationFrame(tick);
+          return;
+        }
+
+        lastFrame = now;
+        if (dirtyRects) {
+          cursors.forEach(c => {
+            if (c.task?.el) refreshTaskRect(c.task);
+          });
+          dirtyRects = false;
+        }
+
+        ctx.clearRect(0, 0, vw, vh);
+
+        if (!exiting) {
+          let allIdle = true;
+
+          cursors.forEach(c => {
+            c.alpha = Math.min(1, c.alpha + 0.16);
+            const t = c.task;
+            if (!t) return;
+            allIdle = false;
+
+            if (c.phase === 'travel') {
+              const p = Math.min(1, (now - c.segStart) / t.travel);
+              const e = easeInOut(p);
+              const pt = quadBezier(c.startPt, c.ctrlPt, c.endPt, e);
+              c.x = pt.x;
+              c.y = pt.y;
+
+              if (p >= 1) {
+                refreshTaskRect(t);
+                const r = t.rect;
+                c.phase = 'build';
+                c.segStart = now;
+                if (t.mode === 'bg') {
+                  t.startCornerX = c.x;
+                  t.startCornerY = c.y;
+                }
+              }
+            } else if (c.phase === 'build') {
+              const p = Math.min(1, (now - c.segStart) / t.build);
+              const e = easeInOut(p);
+
+              if (t.mode === 'textSweep') {
+                const full = t.el.dataset.fullText || '';
+                t.el.textContent = full.slice(0, Math.round(e * full.length));
+              }
+
+              updateTraceAndDraw(c, e);
+
+              if (p >= 1) {
+                if (t.mode === 'textSweep') {
+                  t.el.textContent = t.el.dataset.fullText || '';
+                } else {
+                  revealElement(t.el, t.mode === 'bg' ? 'bg' : t.mode === 'card' ? 'card' : 'normal');
+                  if (t.mode !== 'bg') {
+                    effects.push({ type: 'flash', rect: t.rect, color: c.color, born: now, life: 240 });
+                  }
+                }
+                effects.push({ type: 'pulse', x: c.x, y: c.y, color: c.color, born: now, life: 320 });
+                startNextTask(c, now);
+              }
+            }
+          });
+
+          if (allIdle) {
+            waveIdx++;
+            if (waveIdx < waves.length) {
+              loadWave(waveIdx, now);
+            } else {
+              document.querySelectorAll('#rowsContainer > section').forEach(s => revealElement(s, 'section'));
+              document.querySelectorAll('#homeTop10 > div, #hr_1 > div, #hr_2 > div').forEach(el => revealElement(el, 'card'));
+              exiting = true;
+              exitStart = now;
+              cursors.forEach((c, i) => {
+                c.tag = '';
+                c.startPt = { x: c.x, y: c.y };
+                c.endPt = {
+                  x: c.x < vw * 0.5 ? -44 : vw + 44,
+                  y: Math.max(24, Math.min(vh - 24, c.y + (i % 2 === 0 ? -36 : 36)))
+                };
+              });
+            }
+          }
+        } else {
+          const p = Math.min(1, (now - exitStart) / exitDuration);
+          const e = easeOutCubic(p);
+          cursors.forEach(c => {
+            c.x = lerp(c.startPt.x, c.endPt.x, e);
+            c.y = lerp(c.startPt.y, c.endPt.y, e);
+            c.alpha = Math.max(0, 1 - p * 1.15);
+          });
+          if (p >= 1) {
+            stopAll();
+            resolve();
+            return;
+          }
+        }
+
+        drawEffects(now);
+        cursors.forEach(drawCursorPointer);
+        rafId = requestAnimationFrame(tick);
+      };
+
+      rafId = requestAnimationFrame(tick);
+    });
+  }
+
+  function abort() {
+    active = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (resizeListener) { window.removeEventListener('resize', resizeListener); resizeListener = null; }
+    const cv = $('swarmCanvas');
+    if (cv) cv.classList.add('hidden');
+    cleanupDomPrep();
+  }
+
+  return { prepDom, run, abort };
+})();
+
+/* ==========================================================================
+   12. CINEMATIC INTRO CONTROLLER (STATE MACHINE + ACCESSIBILITY)
+   ========================================================================== */
+const IntroController = (() => {
+  const STATES = Object.freeze({
+    INTRO_MOVIE_LOGO: 'INTRO_MOVIE_LOGO',
+    INTRO_FLIXORA_LOGO: 'INTRO_FLIXORA_LOGO',
+    RESOURCE_LOADING: 'RESOURCE_LOADING',
+    SWARM_BUILDING: 'SWARM_BUILDING',
+    WEBSITE_READY: 'WEBSITE_READY',
+    SKIPPED: 'SKIPPED',
+    ERROR_RECOVERY: 'ERROR_RECOVERY'
+  });
+
+  let state = STATES.INTRO_MOVIE_LOGO;
+  let started = false;
+  let timers = [];
+  let rafIds = [];
+  let dataReady = false;
+  let dataOk = false;
+  let streamFrac = 0;
+  let shownPct = 0;
+
+  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const wait = ms => new Promise(resolve => {
+    const id = setTimeout(resolve, ms);
+    timers.push(id);
+  });
+
+  function clearAsyncLoops() {
+    timers.forEach(clearTimeout);
+    timers = [];
+    rafIds.forEach(cancelAnimationFrame);
+    rafIds = [];
+    SwarmEngine.abort();
+  }
+
+  function showStage(stageId) {
+    ['stageLogoFall', 'stagePaperReveal', 'stageLoading'].forEach(id => {
+      const el = $(id);
+      if (el) el.classList.toggle('active', id === stageId);
+    });
+  }
+
+  function bindAssets() {
+    const mImg = $('movieIdLogoImg');
+    const fImg = $('flixoraLogoImg');
+    const lImg = $('loaderLogoImg');
+
+    if (mImg) {
+      mImg.onerror = () => {
+        mImg.classList.add('hidden');
+        $('movieIdLogoFallback')?.classList.remove('hidden');
+      };
+      mImg.src = FLIXORA_ASSETS.movieIdFinderLogo;
+    }
+    if (fImg) {
+      fImg.onerror = () => {
+        fImg.classList.add('hidden');
+        $('flixoraLogoFallback')?.classList.remove('hidden');
+      };
+      fImg.src = FLIXORA_ASSETS.flixoraLogo;
+    }
+    if (lImg) {
+      lImg.onerror = () => lImg.classList.add('hidden');
+      lImg.src = FLIXORA_ASSETS.flixoraLogo;
+    }
+  }
+
+  function dismissOverlay(immediate = false) {
+    const ov = $('introOverlay');
+    if (!ov) return;
+    if (immediate) {
+      ov.style.display = 'none';
+    } else {
+      ov.style.opacity = '0';
+      ov.style.pointerEvents = 'none';
+      setTimeout(() => { ov.style.display = 'none'; }, 440);
+    }
+    document.body.style.overflow = '';
+  }
+
+  function activateInteractiveApp() {
+    if (!dataOk && dataReady) {
+      state = STATES.ERROR_RECOVERY;
+      $('heroSection').classList.add('hidden');
+      $('homeView').classList.add('hidden');
+      $('errorView').classList.remove('hidden');
+      return;
+    }
+    heroCanAutoPlay = true;
+    if (slides.length) playHero(hIdx);
+    autoScroll();
+  }
+
+  function finishToWebsite(nextState) {
+    if (state === STATES.WEBSITE_READY || state === STATES.SKIPPED || state === STATES.ERROR_RECOVERY) return;
+    state = nextState;
+    clearAsyncLoops();
+    dismissOverlay(false);
+    activateInteractiveApp();
+  }
+
+  async function skip() {
+    if (state === STATES.WEBSITE_READY || state === STATES.SKIPPED || state === STATES.ERROR_RECOVERY) return;
+    state = STATES.SKIPPED;
+    clearAsyncLoops();
+    dismissOverlay(true);
+    $('headerBrand')?.focus?.();
+
+    if (!dataReady) {
+      if (!$('rowsContainer').children.length) {
+        $('rowsContainer').innerHTML = `<div class="flex gap-4 overflow-hidden py-4">${Array.from({ length: 6 }, () => `<div class="w-[134px] h-[198px] rounded-xl bg-white/5 animate-pulse shrink-0"></div>`).join('')}</div>`;
+      }
+      const ok = await homeInitPromise;
+      dataReady = true;
+      dataOk = Boolean(ok);
+    }
+    activateInteractiveApp();
+  }
+
+  // STAGE 01: Physics-driven gravity fall + damped bounce + settling caption
+  async function runStage1() {
+    if (state !== STATES.INTRO_MOVIE_LOGO) return;
+    showStage('stageLogoFall');
+    await ResourceLoader.preloadImage(FLIXORA_ASSETS.movieIdFinderLogo, 2800);
+    if (state !== STATES.INTRO_MOVIE_LOGO) return;
+
+    const wrap = $('fallLogoWrap');
+    const shadow = $('fallShadow');
+    const ring = $('fallImpactRing');
+    const spotlight = $('fallSpotlight');
+    const title = $('fallTitleText');
+
+    if (reducedMotion) {
+      wrap.style.opacity = '1';
+      wrap.style.transform = 'none';
+      shadow.style.opacity = '0.78';
+      shadow.style.transform = 'scale(1)';
+      spotlight?.classList.add('lit');
+      title?.classList.add('fall-text-ready');
+      await wait(650);
+      return;
+    }
+
+    spotlight?.classList.add('lit');
+    const dropStartY = -Math.min(540, window.innerHeight * 0.72);
+    let impactFired = false;
+
+    await new Promise(resolve => {
+      const dur = 1280;
+      const t0 = performance.now();
+
+      const animateFall = now => {
+        if (state !== STATES.INTRO_MOVIE_LOGO) { resolve(); return; }
+        const t = Math.min(1, (now - t0) / dur);
+
+        let y = 0;
+        let sx = 1;
+        let sy = 1;
+        let rotZ = 0;
+
+        if (t < 0.56) {
+          const p = t / 0.56;
+          const grav = p * p;
+          y = dropStartY * (1 - grav);
+          rotZ = -7 * (1 - p);
+          sy = 1 + 0.05 * p;
+          sx = 1 - 0.03 * p;
+        } else if (t < 0.72) {
+          if (!impactFired) {
+            impactFired = true;
+            ring?.classList.add('pulse');
+          }
+          const p = (t - 0.56) / 0.16;
+          const arc = Math.sin(p * Math.PI);
+          y = -28 * arc;
+          const squash = Math.max(0, 1 - p * 3.5);
+          sx = 1 + 0.1 * squash;
+          sy = 1 - 0.12 * squash;
+          rotZ = 2 * (1 - p);
+        } else if (t < 0.88) {
+          const p = (t - 0.72) / 0.16;
+          y = -9 * Math.sin(p * Math.PI);
+          rotZ = -0.8 * (1 - p);
+        } else {
+          const p = (t - 0.88) / 0.12;
+          y = -2 * Math.sin(p * Math.PI);
+          rotZ = 0;
+        }
+
+        const heightNorm = Math.min(1, Math.abs(y) / Math.abs(dropStartY));
+        const shadowScale = Math.max(0.28, 1 - heightNorm * 0.7);
+        const shadowOp = Math.max(0.1, 0.82 - heightNorm * 0.72);
+
+        wrap.style.opacity = Math.min(1, t * 5).toFixed(2);
+        wrap.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0) scale(${sx.toFixed(3)}, ${sy.toFixed(3)}) rotateZ(${rotZ.toFixed(2)}deg)`;
+        shadow.style.opacity = shadowOp.toFixed(2);
+        shadow.style.transform = `scale(${shadowScale.toFixed(3)})`;
+
+        if (t < 1) {
+          const id = requestAnimationFrame(animateFall);
+          rafIds.push(id);
+        } else {
+          wrap.style.transform = 'translate3d(0, 0, 0) scale(1, 1) rotateZ(0deg)';
+          shadow.style.opacity = '0.8';
+          shadow.style.transform = 'scale(1)';
+          resolve();
+        }
+      };
+
+      rafIds.push(requestAnimationFrame(animateFall));
+    });
+
+    if (state !== STATES.INTRO_MOVIE_LOGO) return;
+    title?.classList.add('fall-text-ready');
+    await wait(1100);
+  }
+
+  // STAGE 02: Organic Crumpled-Paper Uncrumpling -> Flixora Logo + POWERED BY FLIXORA
+  async function runStage2() {
+    if (state !== STATES.INTRO_FLIXORA_LOGO) return;
+    showStage('stagePaperReveal');
+    await ResourceLoader.preloadImage(FLIXORA_ASSETS.flixoraLogo, 2800);
+    if (state !== STATES.INTRO_FLIXORA_LOGO) return;
+
+    const wad = $('paperParcel');
+    if (reducedMotion) {
+      wad.classList.add('crumple-in', 'uncrumple-mid', 'uncrumple-flat', 'paper-fade');
+      $('poweredByText').classList.add('show');
+      await wait(650);
+      return;
+    }
+
+    requestAnimationFrame(() => wad.classList.add('crumple-in'));
+    await wait(440); if (state !== STATES.INTRO_FLIXORA_LOGO) return;
+    wad.classList.add('uncrumple-mid');
+    await wait(460); if (state !== STATES.INTRO_FLIXORA_LOGO) return;
+    wad.classList.add('uncrumple-flat');
+    await wait(460); if (state !== STATES.INTRO_FLIXORA_LOGO) return;
+    wad.classList.add('paper-fade');
+    $('flixoraSheen').classList.add('sweep');
+    await wait(320); if (state !== STATES.INTRO_FLIXORA_LOGO) return;
+    $('poweredByText').classList.add('show');
+    await wait(1000);
+  }
+
+  // STAGE 03: Resource-Aware Loading Screen (zero fake timers)
+  async function runStage3() {
+    if (state !== STATES.RESOURCE_LOADING) return;
+    showStage('stageLoading');
+
+    const statusEl = $('loaderStatusText');
+    const subEl = $('loaderSubText');
+    const metricsEl = $('loaderMetricsText');
+    const pctEl = $('loaderPercentText');
+    const barFill = $('loaderBarFill');
+    const progressBar = $('loaderProgressBar');
+
+    let targetPct = 0;
+    let done = false;
+
+    const setStatus = (title, sub) => {
+      statusEl.innerText = title;
+      subEl.innerText = sub;
+      metricsEl.innerText = ResourceLoader.getRuntimeMetrics().label;
+    };
+
+    const tickBar = () => {
+      if (state !== STATES.RESOURCE_LOADING) return;
+      shownPct += (targetPct - shownPct) * 0.2;
+      if (Math.abs(targetPct - shownPct) < 0.4) shownPct = targetPct;
+      const p = Math.min(100, Math.max(0, Math.round(shownPct)));
+      barFill.style.transform = `scaleX(${(p / 100).toFixed(3)})`;
+      pctEl.innerText = `${p}%`;
+      progressBar?.setAttribute('aria-valuenow', String(p));
+      if (!done || p < 100) {
+        const id = requestAnimationFrame(tickBar);
+        rafIds.push(id);
+      }
+    };
+    rafIds.push(requestAnimationFrame(tickBar));
+
+    setStatus('Initializing Flixora', 'Checking font engine & runtime readiness...');
+    if (document.fonts?.ready) {
+      await Promise.race([document.fonts.ready, wait(900)]);
+    }
+    if (state !== STATES.RESOURCE_LOADING) return;
+    targetPct = Math.max(15, Math.round(streamFrac * 35));
+
+    setStatus('Loading Movie Catalog', 'Streaming trending & Indian TV rows from TMDB...');
+    const streamWatcher = setInterval(() => {
+      if (state !== STATES.RESOURCE_LOADING) { clearInterval(streamWatcher); return; }
+      const m = ResourceLoader.getRuntimeMetrics();
+      metricsEl.innerText = m.label;
+      targetPct = Math.min(55, 18 + Math.round(streamFrac * 32) + Math.min(5, m.count));
+    }, 90);
+    timers.push(streamWatcher);
+
+    const ok = await Promise.race([
+      homeInitPromise,
+      wait(9500).then(() => (dataReady ? dataOk : false))
+    ]);
+    clearInterval(streamWatcher);
+    dataReady = true;
+    dataOk = Boolean(ok);
+    if (state !== STATES.RESOURCE_LOADING) return;
+
+    if (!dataOk) {
+      setStatus('Connection Issue', 'Unable to reach movie catalog...');
+      targetPct = 100;
+      await wait(420);
+      finishToWebsite(STATES.ERROR_RECOVERY);
+      return;
+    }
+
+    targetPct = 62;
+    setStatus('Populating Discovery Rows', 'Rendering Top 10, Recommended & Indian TV cards...');
+    await Promise.race([homeEarlyRowsPromise, wait(2400)]);
+    if (state !== STATES.RESOURCE_LOADING) return;
+
+    targetPct = 70;
+    setStatus('Caching Visual Assets', 'Preloading hero backdrop & visible row posters...');
+    const heroUrl = slides[0] ? `${ORG}${slides[0].backdrop_path || slides[0].poster_path}` : '';
+    const posterUrls = homeTop.slice(0, 6).map(x => `${IMG}${x.poster_path}`);
+    const assetList = [heroUrl, ...posterUrls].filter(Boolean);
+
+    let doneCount = 0;
+    await Promise.allSettled(
+      assetList.map(url =>
+        ResourceLoader.preloadImage(url, 2800).then(() => {
+          doneCount++;
+          targetPct = 70 + Math.round((doneCount / Math.max(1, assetList.length)) * 20);
+          metricsEl.innerText = `${ResourceLoader.getRuntimeMetrics().label} • Assets ${doneCount}/${assetList.length}`;
+        })
+      )
+    );
+    if (state !== STATES.RESOURCE_LOADING) return;
+
+    setStatus('Assembling Workspace', 'Preparing homepage components for swarm build...');
+    SwarmEngine.prepDom();
+    targetPct = 95;
+    await wait(160);
+    if (state !== STATES.RESOURCE_LOADING) return;
+
+    setStatus('Ready', 'Launching interactive interface assembly');
+    targetPct = 100;
+    while (shownPct < 99 && state === STATES.RESOURCE_LOADING) {
+      await wait(35);
+    }
+    done = true;
+    await wait(120);
+  }
+
+  // STAGE 04: Coordinated Multi-Cursor Swarm Assembly -> STAGE 05: Final Website Reveal
+  async function runStage4() {
+    if (state !== STATES.SWARM_BUILDING) return;
+    if (reducedMotion) {
+      SwarmEngine.abort();
+      finishToWebsite(STATES.WEBSITE_READY);
+      return;
+    }
+    dismissOverlay(false);
+    await SwarmEngine.run(() => state === STATES.SWARM_BUILDING);
+    if (state === STATES.SWARM_BUILDING) {
+      finishToWebsite(STATES.WEBSITE_READY);
+    }
+  }
+
+  async function start() {
+    if (started) return;
+    started = true;
+    bindAssets();
+    document.body.style.overflow = 'hidden';
+
+    homeInitPromise = initHome(f => { streamFrac = Math.max(streamFrac, f); })
+      .then(ok => { dataReady = true; dataOk = Boolean(ok); return ok; });
+
+    await runStage1();
+    if (state !== STATES.INTRO_MOVIE_LOGO) return;
+
+    state = STATES.INTRO_FLIXORA_LOGO;
+    await runStage2();
+    if (state !== STATES.INTRO_FLIXORA_LOGO) return;
+
+    state = STATES.RESOURCE_LOADING;
+    await runStage3();
+    if (state !== STATES.RESOURCE_LOADING) return;
+
+    state = STATES.SWARM_BUILDING;
+    await runStage4();
+  }
+
+  return { start, skip, getState: () => state };
+})();
+
+/* ==========================================================================
+   13. INITIALIZATION, LIFECYCLE & ACCESSIBILITY LISTENERS
+   ========================================================================== */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (heroReady) heroP?.pauseVideo?.();
+  } else if (heroCanAutoPlay && heroReady && $('detailsModal').classList.contains('hidden') && $('heroSection').classList.contains('hidden') === false) {
+    heroP?.playVideo?.();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  IntroController.start();
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (!$('lightboxModal').classList.contains('hidden')) $('lightboxModal').classList.add('hidden');
+      else if (!$('detailsModal').classList.contains('hidden')) closeModal();
+    }
+  });
+});
+</script>
+</body>
+</html>
