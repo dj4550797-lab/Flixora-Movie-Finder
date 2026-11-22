@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="dark scroll-smooth">
 <head>
@@ -6,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Flixora — Movie ID Finder</title>
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="preconnect" href="https://i.ytimg.com">
+<link rel="preconnect" href="https://www.google.com">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
@@ -91,7 +93,6 @@ body::before {
 }
 .row-section { content-visibility: auto; contain-intrinsic-size: auto 285px; }
 
-/* Suspend expensive backdrop-filter & pulse repaints during Swarm Canvas 60fps build */
 body.swarm-building .site-header {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -122,18 +123,37 @@ body.swarm-building .animate-pulse {
 .clip-arch { border-radius: 80px 80px 14px 14px; }
 .clip-leaf { border-radius: 36px 8px 36px 8px; }
 
+/* Hero Trailer: GPU-composited, overscanned to crop YT edge chrome cleanly */
+#heroTrailerWrap {
+  will-change: opacity;
+  contain: layout paint size;
+}
 #heroTrailerWrap iframe {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 100vw;
-  height: 56.25vw;
-  min-height: 100%;
-  min-width: 177.78vh;
-  transform: translate(-50%, -50%);
+  transform: translate3d(-50%, -50%, 0);
   pointer-events: none;
   border: 0;
 }
+.hero-scrim-bottom {
+  background: linear-gradient(
+    to top,
+    #07090f 0%,
+    rgba(7,9,15,0.68) 22%,
+    rgba(7,9,15,0.16) 52%,
+    rgba(7,9,15,0.03) 100%
+  );
+}
+.hero-scrim-left {
+  background: linear-gradient(
+    to right,
+    rgba(7,9,15,0.72) 0%,
+    rgba(7,9,15,0.26) 36%,
+    rgba(7,9,15,0) 68%
+  );
+}
+
 .ai-loader {
   border: 3px solid rgba(0,242,254,.15);
   border-top: 3px solid var(--fx-cyan);
@@ -268,7 +288,6 @@ body.swarm-building .animate-pulse {
   transform: translate3d(0, 0, 0);
 }
 
-/* Stage 02: Organic Crumpled-Paper Uncrumpling -> Flixora Logo + POWERED BY FLIXORA */
 .paper-scene {
   perspective: 1300px;
   position: relative;
@@ -635,7 +654,7 @@ body.swarm-building .animate-pulse {
 <canvas id="swarmCanvas" class="hidden" aria-hidden="true"></canvas>
 
 <!-- ========================================================================
-     FLIXORA MOVIE ID FINDER APPLICATION STRUCTURE (WITH INDIAN TV ADDED)
+     FLIXORA MOVIE ID FINDER APPLICATION STRUCTURE
      ======================================================================== -->
 <header id="mainHeader" class="sticky top-0 inset-x-0 z-50 site-header px-4 py-3 sm:px-8 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
   <div class="flex flex-wrap items-center justify-between gap-3">
@@ -676,18 +695,18 @@ body.swarm-building .animate-pulse {
   </div>
 </section>
 
-<section id="heroSection" class="relative min-h-[72vh] sm:min-h-[80vh] w-full flex flex-col justify-end pb-10 pt-16 overflow-hidden bg-black">
-  <div id="heroBgImg" class="absolute inset-0 bg-cover bg-center z-0 transition-all duration-500"></div>
-  <div id="heroTrailerWrap" class="absolute inset-0 overflow-hidden pointer-events-none opacity-0 transition-opacity duration-500 z-[1]"></div>
-  <div class="absolute inset-0 bg-gradient-to-t from-dark via-dark/50 to-transparent z-[2] pointer-events-none"></div>
-  <div class="absolute inset-0 bg-gradient-to-r from-dark/90 via-dark/40 to-transparent z-[2] pointer-events-none"></div>
+<section id="heroSection" class="relative min-h-[64vh] sm:min-h-[80vh] w-full flex flex-col justify-end pb-10 pt-16 overflow-hidden bg-black">
+  <div id="heroBgImg" class="absolute inset-0 bg-cover bg-center z-0 transition-opacity duration-500"></div>
+  <div id="heroTrailerWrap" class="absolute inset-0 overflow-hidden pointer-events-none opacity-0 transition-opacity duration-300 z-[1]"></div>
+  <div class="absolute inset-0 hero-scrim-bottom z-[2] pointer-events-none"></div>
+  <div class="absolute inset-0 hero-scrim-left z-[2] pointer-events-none"></div>
   <button id="heroSoundBtn" onclick="toggleHeroSound()" title="Sound On / Off" class="absolute top-4 sm:top-6 right-4 sm:right-10 z-20 liquid-pill text-white p-2.5 rounded-full cursor-pointer">
     <svg id="heroSoundIcon" class="w-5 h-5 text-zinc-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
   </button>
   <div id="heroTextWrap" class="relative z-10 px-4 sm:px-10 w-full max-w-4xl space-y-3">
-    <span id="heroBadge" class="text-aiCyan font-bold tracking-widest text-xs uppercase block">Flixora AI Pick • #1</span>
-    <h1 id="heroTitle" class="text-3xl sm:text-6xl font-black uppercase text-white leading-none">Loading...</h1>
-    <p id="heroOverview" class="text-xs sm:text-base text-zinc-300 line-clamp-3 max-w-2xl"></p>
+    <span id="heroBadge" class="text-aiCyan font-bold tracking-widest text-xs uppercase block drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">Flixora AI Pick • #1</span>
+    <h1 id="heroTitle" class="text-3xl sm:text-6xl font-black uppercase text-white leading-none drop-shadow-[0_3px_14px_rgba(0,0,0,0.9)]">Loading...</h1>
+    <p id="heroOverview" class="text-xs sm:text-base text-zinc-200 line-clamp-3 max-w-2xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]"></p>
     <div class="pt-2 flex flex-wrap items-center gap-3">
       <div id="heroButtons"></div>
       <div id="heroNavPill" class="liquid-pill flex items-center gap-2 rounded-full px-2.5 py-1.5">
@@ -766,7 +785,7 @@ const FLIXORA_ASSETS = Object.freeze({
 });
 
 /* ==========================================================================
-   9. APPLICATION CORE & TMDB INTEGRATION (WITH INDIAN TV SHOWS)
+   9. APPLICATION CORE & TMDB INTEGRATION
    ========================================================================== */
 const API='ef3c9e207a5c0800c9f5d1b9f13da277',BASE='https://api.themoviedb.org/3',IMG='https://image.tmdb.org/t/p/w500',ORG='https://image.tmdb.org/t/p/original';
 const FALLBACK_POSTER="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'%3E%3Crect width='300' height='450' fill='%23111827'/%3E%3Ctext x='50%25' y='50%25' fill='%234b5563' font-family='sans-serif' font-size='18' text-anchor='middle' dy='.3em'%3ENo Image%3C/text%3E%3C/svg%3E";
@@ -779,11 +798,18 @@ function isAnimeOrKo(i){return isAni(i)||i.original_language==='ko'}
 function isIndianTV(i){return i.poster_path&&!isAni(i)&&(i.origin_country?.includes('IN')||IN_LANGS.has(i.original_language))}
 
 let page='home',mId,mType,imdbId='',primId='',mData,revs=[],revPages=1,revExp=0,simPool=[],simOff=0;
-let ytReady=0,heroP=null,heroReady=0,modP=null,slides=[],homeTop=[],hIdx=0,trTry=0,muted=1,fbTmr=null,playChkTmr=null,autoScrollTimer=null,scrollPause=0,sSeq=0,obs=null,saEp,saType,saPg=1,saScope;
+let ytReady=0,heroP=null,heroReady=0,modP=null,slides=[],homeTop=[],hIdx=0,trTry=0,muted=1,fbTmr=null,playChkTmr=null,revealTmr=null,heroResizeObs=null,autoScrollTimer=null,scrollPause=0,sSeq=0,obs=null,saEp,saType,saPg=1,saScope;
 let heroCanAutoPlay=false;
 let homeEarlyRowsPromise=Promise.resolve();
 
-window.onYouTubeIframeAPIReady=()=>{ytReady=1;if(heroCanAutoPlay&&slides.length)playHero(hIdx)};
+window.onYouTubeIframeAPIReady=()=>{
+  ytReady=1;
+  if($('heroYtPlayer')&&!heroP){
+    attachHeroYtPlayer(hIdx);
+  }else if(heroCanAutoPlay&&slides.length&&!$('heroYtPlayer')){
+    playHero(hIdx);
+  }
+};
 (()=>{if(window.YT?.Player)ytReady=1;else{let s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)}})();
 
 const HOME_R=[
@@ -953,6 +979,7 @@ async function initHome(onProgress){
   if(page==='home')$('homeView').classList.remove('hidden');
   homeTop=tr.results.filter(i=>i.poster_path&&(i.media_type==='movie'||i.media_type==='tv')).slice(0,10);
   slides=homeTop;
+  prefetchSlideTrailers(slides.slice(0,3));
   renderHome();
   showSlide(0);
   return true;
@@ -1000,7 +1027,7 @@ async function openPage(p){
   $('searchInput').value='';$('clearSearchBtn').classList.add('hidden');$('searchView').classList.add('hidden');$('errorView').classList.add('hidden');$('heroSection').classList.remove('hidden');
   if(p==='home'){
     $('dedicatedView').classList.add('hidden');$('homeView').classList.remove('hidden');scrollTo(0,0);
-    if(homeTop.length){slides=homeTop;showSlide(0);renderHome()}else{initHome()}
+    if(homeTop.length){slides=homeTop;prefetchSlideTrailers(slides.slice(0,3));showSlide(0);renderHome()}else{initHome()}
     return;
   }
   $('homeView').classList.add('hidden');$('dedicatedView').classList.remove('hidden');$('seeAllWrap').classList.add('hidden');$('dedRowsWrap').classList.remove('hidden');scrollTo(0,0);
@@ -1015,7 +1042,7 @@ async function openPage(p){
   let f5=await Promise.all(rows.slice(0,5).map(r=>api(r[1])));if(page!==p)return;
   let top=f5[0]?.results||[];if(p==='movie')top=pureM(top);else if(p==='tv')top=pureT(top);else if(p==='indiantv')top=top.filter(x=>x.poster_path&&!isAni(x));
   top=top.filter(i=>i.poster_path).slice(0,10).map(i=>({...i,media_type:rows[0][2]}));
-  if(top.length){slides=top;showSlide(0)}
+  if(top.length){slides=top;prefetchSlideTrailers(slides.slice(0,3));showSlide(0)}
   f5.forEach((d,i)=>{if(!d?.results)return;let it=d.results.filter(x=>x.poster_path);if(p==='movie')it=pureM(it);else if(p==='tv')it=pureT(it);else if(p==='indiantv')it=it.filter(x=>!isAni(x));fillRow(`dr_${p}_${i}`,it,rows[i][2],rows[i][3])});
 }
 
@@ -1024,114 +1051,241 @@ async function fetchSeeAll(){let d=await api(`${saEp}${saEp.includes('?')?'&':'?
 function loadMoreSeeAll(){saPg++;fetchSeeAll()}
 function closeSeeAll(){$('seeAllWrap').classList.add('hidden');$('dedRowsWrap').classList.remove('hidden')}
 
-function changeHeroSlide(dir){if(slides.length)showSlide((hIdx+dir+slides.length)%slides.length)}
-
-function destroyHeroPlayer(){
-  clearTimeout(playChkTmr);
-  if(heroP){try{heroP.destroy()}catch{}heroP=null}
-  heroReady=0;
-  $('heroTrailerWrap').innerHTML='';
-  $('heroTrailerWrap').classList.remove('opacity-100');
-  $('heroTrailerWrap').classList.add('opacity-0');
+/* ==========================================================================
+   HERO BANNER TRAILER SYSTEM (FAST, BRAND-FREE, RESPONSIVE, LAG-FREE)
+   ========================================================================== */
+function fetchSlideVideoKeys(it) {
+  if (!it) return Promise.resolve([]);
+  if (it._chk) return Promise.resolve(it._keys || []);
+  if (it._vidPromise) return it._vidPromise;
+  const tp = it.media_type || (it.first_air_date ? 'tv' : 'movie');
+  it._vidPromise = api(`/${tp}/${it.id}/videos`).then(v => {
+    const ys = (v?.results || []).filter(x => x.site === 'YouTube' && x.key);
+    const rank = x => (x.type === 'Trailer' ? (x.official ? 0 : 1) : x.type === 'Teaser' ? 2 : 3);
+    ys.sort((a, b) => rank(a) - rank(b));
+    it._keys = [...new Set(ys.map(x => x.key))];
+    it._chk = 1;
+    return it._keys;
+  }).catch(() => {
+    it._keys = [];
+    it._chk = 1;
+    return [];
+  });
+  return it._vidPromise;
 }
 
-function showSlide(i){
-  if(!slides.length)return;
-  clearTimeout(fbTmr);clearTimeout(playChkTmr);
-  hIdx=i;trTry=0;
-  let it=slides[hIdx],tp=it.media_type||(it.first_air_date?'tv':'movie');
-  $('heroBgImg').style.backgroundImage=`url(${ORG}${it.backdrop_path||it.poster_path})`;
-  $('heroBadge').innerText=`${{home:'Flixora AI Pick',movie:'Best Movie',tv:'Best Series',indiantv:'Best Indian TV',anime:'Best Anime',kdrama:'Best K-Drama'}[page]} • #${hIdx+1}`;
-  $('heroCounter').innerText=`${hIdx+1}/${slides.length}`;
-  $('heroTitle').innerText=it.title||it.name;
-  $('heroTitle').dataset.fullText=it.title||it.name;
-  $('heroOverview').innerText=it.overview||'';
-  $('heroButtons').innerHTML=`<button onclick="openDetails(${it.id},'${tp}')" class="bg-gradient-to-r from-aiCyan to-aiBlue text-black font-black px-6 sm:px-8 py-3 rounded-full shadow-[0_0_15px_rgba(0,242,254,.4)] hover:scale-105 transition text-xs sm:text-sm cursor-pointer">VIEW AI INSIGHTS</button>`;
-  if(heroCanAutoPlay)playHero(hIdx);
+function prefetchSlideTrailers(list) {
+  (list || []).forEach(it => fetchSlideVideoKeys(it));
 }
 
-async function playHero(i){
-  clearTimeout(fbTmr);clearTimeout(playChkTmr);
-  let it=slides[i];if(!it||!heroCanAutoPlay)return;
-  let w=$('heroTrailerWrap');
-  w.classList.remove('opacity-100');w.classList.add('opacity-0');
-  if(!it._chk){
-    let tp=it.media_type||(it.first_air_date?'tv':'movie');
-    let v=await api(`/${tp}/${it.id}/videos`);
-    let ys=(v?.results||[]).filter(x=>x.site==='YouTube'&&x.key);
-    const rank=x=>(x.type==='Trailer'?(x.official?0:1):x.type==='Teaser'?2:3);
-    ys.sort((a,b)=>rank(a)-rank(b));
-    it._keys=[...new Set(ys.map(x=>x.key))];
-    it._chk=1;
+function fitHeroTrailer() {
+  const wrap = $('heroTrailerWrap');
+  const ifr = $('heroYtPlayer');
+  if (!wrap || !ifr) return;
+  const w = wrap.clientWidth;
+  const h = wrap.clientHeight;
+  if (!w || !h) return;
+  const videoRatio = 16 / 9;
+  // Overscan cleanly crops YT's top title bar & bottom watermark outside overflow-hidden bounds
+  const overscan = w < 640 ? 1.12 : 1.16;
+  let targetW, targetH;
+  if (w / h > videoRatio) {
+    targetW = w * overscan;
+    targetH = targetW / videoRatio;
+  } else {
+    targetH = h * overscan;
+    targetW = targetH * videoRatio;
   }
-  if(i!==hIdx||!heroCanAutoPlay)return;
-  let k=it._keys?.[trTry];
-  if(!k){destroyHeroPlayer();fbTmr=setTimeout(()=>changeHeroSlide(1),8000);return}
-  loadHeroKey(k,i);
+  ifr.style.width = `${Math.ceil(targetW)}px`;
+  ifr.style.height = `${Math.ceil(targetH)}px`;
 }
 
-function advanceHeroTrailerKey(slideIdx){
-  if(slideIdx!==hIdx)return;
-  let it=slides[hIdx];
+function ensureHeroResizeObserver() {
+  const wrap = $('heroTrailerWrap');
+  if (!wrap) return;
+  if (window.ResizeObserver && !heroResizeObs) {
+    heroResizeObs = new ResizeObserver(() => fitHeroTrailer());
+    heroResizeObs.observe(wrap);
+  }
+  fitHeroTrailer();
+}
+
+function hideHeroTrailerLayer() {
+  clearTimeout(revealTmr);
+  const w = $('heroTrailerWrap');
+  if (!w) return;
+  w.classList.remove('opacity-100');
+  w.classList.add('opacity-0');
+}
+
+function revealHeroTrailerLayer() {
+  clearTimeout(revealTmr);
+  // Short frame-ready delay prevents black flash before first decoded video frame
+  revealTmr = setTimeout(() => {
+    const w = $('heroTrailerWrap');
+    if (!w) return;
+    fitHeroTrailer();
+    w.classList.remove('opacity-0');
+    w.classList.add('opacity-100');
+  }, 160);
+}
+
+function changeHeroSlide(dir) {
+  if (slides.length) showSlide((hIdx + dir + slides.length) % slides.length);
+}
+
+function destroyHeroPlayer() {
+  clearTimeout(playChkTmr);
+  clearTimeout(revealTmr);
+  if (heroP) {
+    try { heroP.destroy(); } catch {}
+    heroP = null;
+  }
+  heroReady = 0;
+  const w = $('heroTrailerWrap');
+  if (w) {
+    w.innerHTML = '';
+    w.classList.remove('opacity-100');
+    w.classList.add('opacity-0');
+  }
+}
+
+function showSlide(i) {
+  if (!slides.length) return;
+  clearTimeout(fbTmr);
+  clearTimeout(playChkTmr);
+  clearTimeout(revealTmr);
+  hIdx = i;
+  trTry = 0;
+
+  const it = slides[hIdx];
+  const tp = it.media_type || (it.first_air_date ? 'tv' : 'movie');
+  hideHeroTrailerLayer();
+  $('heroBgImg').style.backgroundImage = `url(${ORG}${it.backdrop_path || it.poster_path})`;
+  $('heroBadge').innerText = `${{home:'Flixora AI Pick',movie:'Best Movie',tv:'Best Series',indiantv:'Best Indian TV',anime:'Best Anime',kdrama:'Best K-Drama'}[page]} • #${hIdx + 1}`;
+  $('heroCounter').innerText = `${hIdx + 1}/${slides.length}`;
+  $('heroTitle').innerText = it.title || it.name;
+  $('heroTitle').dataset.fullText = it.title || it.name;
+  $('heroOverview').innerText = it.overview || '';
+  $('heroButtons').innerHTML = `<button onclick="openDetails(${it.id},'${tp}')" class="bg-gradient-to-r from-aiCyan to-aiBlue text-black font-black px-6 sm:px-8 py-3 rounded-full shadow-[0_0_15px_rgba(0,242,254,.4)] hover:scale-105 transition text-xs sm:text-sm cursor-pointer">VIEW AI INSIGHTS</button>`;
+
+  // Pre-warm next slide trailer keys so transitions are instant
+  if (slides.length > 1) {
+    prefetchSlideTrailers([slides[(hIdx + 1) % slides.length]]);
+  }
+  if (heroCanAutoPlay) playHero(hIdx);
+}
+
+async function playHero(i) {
+  clearTimeout(fbTmr);
+  clearTimeout(playChkTmr);
+  const it = slides[i];
+  if (!it || !heroCanAutoPlay) return;
+
+  hideHeroTrailerLayer();
+  await fetchSlideVideoKeys(it);
+  if (i !== hIdx || !heroCanAutoPlay) return;
+
+  const k = it._keys?.[trTry];
+  if (!k) {
+    if (heroReady && heroP?.stopVideo) {
+      try { heroP.stopVideo(); } catch {}
+    } else {
+      destroyHeroPlayer();
+    }
+    fbTmr = setTimeout(() => changeHeroSlide(1), 8000);
+    return;
+  }
+  loadHeroKey(k, i);
+}
+
+function advanceHeroTrailerKey(slideIdx) {
+  if (slideIdx !== hIdx) return;
+  const it = slides[hIdx];
   trTry++;
-  if(it?._keys?.[trTry]){
-    destroyHeroPlayer();
-    loadHeroKey(it._keys[trTry],slideIdx);
-  }else{
-    destroyHeroPlayer();
-    fbTmr=setTimeout(()=>changeHeroSlide(1),8000);
+  if (it?._keys?.[trTry]) {
+    loadHeroKey(it._keys[trTry], slideIdx);
+  } else {
+    hideHeroTrailerLayer();
+    if (heroReady && heroP?.stopVideo) {
+      try { heroP.stopVideo(); } catch {}
+    } else {
+      destroyHeroPlayer();
+    }
+    fbTmr = setTimeout(() => changeHeroSlide(1), 8000);
   }
 }
 
-function loadHeroKey(k,slideIdx){
-  let w=$('heroTrailerWrap');
-  clearTimeout(playChkTmr);
-  playChkTmr=setTimeout(()=>{
-    if(slideIdx===hIdx&&w.classList.contains('opacity-0'))advanceHeroTrailerKey(slideIdx);
-  },6000);
+function attachHeroYtPlayer(slideIdx) {
+  if (!ytReady || !window.YT?.Player || !$('heroYtPlayer') || heroP) return;
+  try {
+    heroP = new YT.Player('heroYtPlayer', {
+      events: {
+        onReady: e => {
+          heroReady = 1;
+          ensureHeroResizeObserver();
+          if (slideIdx !== hIdx) return;
+          muted ? e.target.mute() : (e.target.unMute(), e.target.setVolume(80));
+          e.target.playVideo();
+        },
+        onStateChange: e => {
+          if (e.data === 1) {
+            clearTimeout(fbTmr);
+            clearTimeout(playChkTmr);
+            revealHeroTrailerLayer();
+          } else if (e.data === 0) {
+            hideHeroTrailerLayer();
+            changeHeroSlide(1);
+          } else if (e.data === 2) {
+            hideHeroTrailerLayer();
+          }
+        },
+        onError: () => advanceHeroTrailerKey(hIdx)
+      }
+    });
+  } catch {}
+}
 
-  if(heroP&&heroReady&&heroP.loadVideoById){
-    try{
-      heroP.loadVideoById({videoId:k});
-      muted?heroP.mute():(heroP.unMute(),heroP.setVolume(80));
+function loadHeroKey(k, slideIdx) {
+  const w = $('heroTrailerWrap');
+  clearTimeout(playChkTmr);
+  playChkTmr = setTimeout(() => {
+    if (slideIdx === hIdx && w.classList.contains('opacity-0')) {
+      advanceHeroTrailerKey(slideIdx);
+    }
+  }, 3800);
+
+  if (heroP && heroReady && heroP.loadVideoById) {
+    try {
+      ensureHeroResizeObserver();
+      heroP.loadVideoById({ videoId: k });
+      muted ? heroP.mute() : (heroP.unMute(), heroP.setVolume(80));
       heroP.playVideo();
       return;
-    }catch{}
+    } catch {}
   }
 
   destroyHeroPlayer();
-  let ifr=document.createElement('iframe');
-  ifr.id='heroYtPlayer';
-  ifr.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
-  ifr.setAttribute('allow','autoplay; encrypted-media; picture-in-picture');
-  ifr.setAttribute('title','Hero Background Trailer');
-  let originQ=location.protocol.startsWith('http')?`&origin=${encodeURIComponent(location.origin)}`:'';
-  ifr.src=`https://www.youtube.com/embed/${encodeURIComponent(k)}?enablejsapi=1&autoplay=1&mute=${muted?1:0}&controls=0&disablekb=1&fs=0&iv_load_policy=3&modestbranding=1&rel=0&playsinline=1${originQ}`;
+  const ifr = document.createElement('iframe');
+  ifr.id = 'heroYtPlayer';
+  ifr.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+  ifr.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+  ifr.setAttribute('title', 'Hero Background Trailer');
+  const originQ = location.protocol.startsWith('http') ? `&origin=${encodeURIComponent(location.origin)}` : '';
+  ifr.src = `https://www.youtube.com/embed/${encodeURIComponent(k)}?enablejsapi=1&autoplay=1&mute=${muted ? 1 : 0}&controls=0&disablekb=1&fs=0&iv_load_policy=3&modestbranding=1&rel=0&playsinline=1&cc_load_policy=0${originQ}`;
   w.appendChild(ifr);
+  ensureHeroResizeObserver();
 
-  if(ytReady&&window.YT?.Player){
-    try{
-      heroP=new YT.Player('heroYtPlayer',{
-        events:{
-          onReady:e=>{
-            heroReady=1;
-            if(slideIdx!==hIdx)return;
-            muted?e.target.mute():(e.target.unMute(),e.target.setVolume(80));
-            e.target.playVideo();
-          },
-          onStateChange:e=>{
-            if(slideIdx!==hIdx)return;
-            if(e.data===1){clearTimeout(fbTmr);clearTimeout(playChkTmr);w.classList.remove('opacity-0');w.classList.add('opacity-100')}
-            else if(e.data===0){changeHeroSlide(1)}
-          },
-          onError:()=>advanceHeroTrailerKey(slideIdx)
-        }
-      });
-    }catch{
-      ifr.onload=()=>{clearTimeout(playChkTmr);w.classList.remove('opacity-0');w.classList.add('opacity-100')};
-    }
-  }else{
-    ifr.onload=()=>{clearTimeout(playChkTmr);w.classList.remove('opacity-0');w.classList.add('opacity-100');fbTmr=setTimeout(()=>changeHeroSlide(1),26000)};
+  if (ytReady && window.YT?.Player) {
+    attachHeroYtPlayer(slideIdx);
+  } else {
+    ifr.onload = () => {
+      clearTimeout(playChkTmr);
+      if (slideIdx === hIdx && !heroP) {
+        revealHeroTrailerLayer();
+        fbTmr = setTimeout(() => changeHeroSlide(1), 24000);
+      }
+    };
   }
 }
 
@@ -1355,12 +1509,6 @@ const ResourceLoader = (() => {
 
 /* ==========================================================================
    11. LAG-FREE, PERIMETER-TRACING SWARM CURSOR ENGINE (STAGE 04)
-   ==========================================================================
-   - Suspends costly backdrop-filter & CSS pulse animations during Stage 04.
-   - Zero ResizeObserver feedback loop, zero trails, zero overlapping targets.
-   - Cursors trace real element outlines (Top-Left -> Top-Right -> Bottom-Right),
-     display concise role tags, type-sweep the hero headline, and snap-reveal
-     each real DOM component with a completion pulse.
    ========================================================================== */
 const SwarmEngine = (() => {
   let active = false;
@@ -1438,7 +1586,6 @@ const SwarmEngine = (() => {
     const tTravel = isMobile ? 180 : 230;
     const tBuild = isMobile ? 210 : 270;
 
-    // Wave 1: Header Brand + All Nav Tabs (including Indian TV) + Search Box
     const w1Buckets = Array.from({ length: cursorCount }, () => []);
     w1Buckets[0].push({ el: $('headerBrand'), tag: 'Brand', mode: 'trace', travel: tTravel, build: tBuild });
     navItems.forEach((btn, idx) => {
@@ -1447,7 +1594,6 @@ const SwarmEngine = (() => {
     });
     w1Buckets[cursorCount - 1].push({ el: $('headerSearchWrap'), tag: 'Search', mode: 'trace', travel: tTravel, build: tBuild + 40 });
 
-    // Wave 2: Hero Backdrop + Badge + Typewriter Title + Overview + Action Buttons
     const w2Buckets = Array.from({ length: cursorCount }, () => []);
     w2Buckets[0].push({ el: $('heroBadge'), tag: 'Badge', mode: 'trace', travel: 180, build: 180 });
     w2Buckets[0].push({ el: $('heroTitle'), tag: 'Type', mode: 'textSweep', travel: 160, build: isMobile ? 460 : 580 });
@@ -1457,7 +1603,6 @@ const SwarmEngine = (() => {
     w2Buckets[cursorCount - 1].push({ el: $('heroBgImg'), tag: 'Stage', mode: 'bg', travel: 220, build: 340 });
     w2Buckets[cursorCount - 1].push({ el: $('heroSoundBtn'), tag: 'Audio', mode: 'trace', travel: 170, build: 170 });
 
-    // Wave 3: Content Sections & Real Movie / Indian TV Cards
     const w3Buckets = Array.from({ length: cursorCount }, () => []);
     if (row0Title && isRectVisible(row0Title.getBoundingClientRect(), vw, vh)) {
       w3Buckets[0].push({ el: row0Title, tag: 'Trending', mode: 'trace', travel: 190, build: 200, onStart: () => revealElement(rowSections[0], 'section') });
@@ -1548,7 +1693,7 @@ const SwarmEngine = (() => {
         endPt: { x: 0, y: 0 }
       }));
 
-      const effects = []; // completed box glow + click pulses
+      const effects = [];
       const waves = buildWaves(vw, vh, cursorCount, isMobile);
       let waveIdx = 0;
       let exiting = false;
@@ -1621,7 +1766,6 @@ const SwarmEngine = (() => {
 
       loadWave(0, lastFrame);
 
-      // Draw crisp builder cursor + compact role tag (zero blur, zero lag)
       const drawCursorPointer = c => {
         if (c.alpha <= 0.02) return;
         ctx.save();
@@ -1668,8 +1812,6 @@ const SwarmEngine = (() => {
         ctx.restore();
       };
 
-      // Perimeter trace: cursor glides Top-Left -> Top-Right (0..0.5) -> Bottom-Right (0.5..1)
-      // while drawing all 4 blueprint edges progressively around the real DOM element.
       const updateTraceAndDraw = (c, e) => {
         const t = c.task;
         const r = t?.rect;
@@ -1709,18 +1851,14 @@ const SwarmEngine = (() => {
           return;
         }
 
-        // Perimeter trace positioning for cursor tip
         if (e < 0.5) {
-          const pTop = e * 2;
-          c.x = lerp(left, right, pTop);
+          c.x = lerp(left, right, e * 2);
           c.y = top;
         } else {
-          const pSide = (e - 0.5) * 2;
           c.x = right;
-          c.y = lerp(top, bottom, pSide);
+          c.y = lerp(top, bottom, (e - 0.5) * 2);
         }
 
-        // Progressive 4-sided blueprint wireframe synchronized with cursor
         const topProg = Math.min(1, e * 2);
         const sideProg = Math.max(0, (e - 0.5) * 2);
 
@@ -1730,13 +1868,10 @@ const SwarmEngine = (() => {
         ctx.globalAlpha = 0.88;
 
         ctx.beginPath();
-        // Top edge (left -> right)
         ctx.moveTo(left, top);
         ctx.lineTo(left + w * topProg, top);
-        // Left edge (top -> bottom grows alongside)
         ctx.moveTo(left, top);
         ctx.lineTo(left, top + h * topProg);
-        // Right & Bottom edges complete as cursor sweeps down
         if (sideProg > 0) {
           ctx.moveTo(right, top);
           ctx.lineTo(right, top + h * sideProg);
@@ -1745,12 +1880,10 @@ const SwarmEngine = (() => {
         }
         ctx.stroke();
 
-        // Subtle construction fill while drawing
         ctx.globalAlpha = 0.08 * e;
         ctx.fillStyle = c.color;
         ctx.fillRect(left, top, w * topProg, h * Math.max(0.2, sideProg || topProg * 0.35));
 
-        // Corner anchor nodes
         ctx.globalAlpha = 0.95;
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(left - 2, top - 2, 4, 4);
@@ -1835,7 +1968,6 @@ const SwarmEngine = (() => {
 
               if (p >= 1) {
                 refreshTaskRect(t);
-                const r = t.rect;
                 c.phase = 'build';
                 c.segStart = now;
                 if (t.mode === 'bg') {
@@ -2046,7 +2178,6 @@ const IntroController = (() => {
     activateInteractiveApp();
   }
 
-  // STAGE 01: Physics-driven gravity fall + damped bounce + settling caption
   async function runStage1() {
     if (state !== STATES.INTRO_MOVIE_LOGO) return;
     showStage('stageLogoFall');
@@ -2144,7 +2275,6 @@ const IntroController = (() => {
     await wait(1100);
   }
 
-  // STAGE 02: Organic Crumpled-Paper Uncrumpling -> Flixora Logo + POWERED BY FLIXORA
   async function runStage2() {
     if (state !== STATES.INTRO_FLIXORA_LOGO) return;
     showStage('stagePaperReveal');
@@ -2172,7 +2302,6 @@ const IntroController = (() => {
     await wait(1000);
   }
 
-  // STAGE 03: Resource-Aware Loading Screen (zero fake timers)
   async function runStage3() {
     if (state !== STATES.RESOURCE_LOADING) return;
     showStage('stageLoading');
@@ -2247,21 +2376,22 @@ const IntroController = (() => {
     if (state !== STATES.RESOURCE_LOADING) return;
 
     targetPct = 70;
-    setStatus('Caching Visual Assets', 'Preloading hero backdrop & visible row posters...');
+    setStatus('Caching Visual Assets', 'Preloading hero backdrop, trailer metadata & posters...');
     const heroUrl = slides[0] ? `${ORG}${slides[0].backdrop_path || slides[0].poster_path}` : '';
     const posterUrls = homeTop.slice(0, 6).map(x => `${IMG}${x.poster_path}`);
     const assetList = [heroUrl, ...posterUrls].filter(Boolean);
 
     let doneCount = 0;
-    await Promise.allSettled(
-      assetList.map(url =>
+    await Promise.allSettled([
+      fetchSlideVideoKeys(slides[0]),
+      ...assetList.map(url =>
         ResourceLoader.preloadImage(url, 2800).then(() => {
           doneCount++;
           targetPct = 70 + Math.round((doneCount / Math.max(1, assetList.length)) * 20);
           metricsEl.innerText = `${ResourceLoader.getRuntimeMetrics().label} • Assets ${doneCount}/${assetList.length}`;
         })
       )
-    );
+    ]);
     if (state !== STATES.RESOURCE_LOADING) return;
 
     setStatus('Assembling Workspace', 'Preparing homepage components for swarm build...');
@@ -2279,7 +2409,6 @@ const IntroController = (() => {
     await wait(120);
   }
 
-  // STAGE 04: Coordinated Multi-Cursor Swarm Assembly -> STAGE 05: Final Website Reveal
   async function runStage4() {
     if (state !== STATES.SWARM_BUILDING) return;
     if (reducedMotion) {
